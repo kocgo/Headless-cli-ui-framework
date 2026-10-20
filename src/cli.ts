@@ -1,150 +1,181 @@
 #!/usr/bin/env node
 /**
- * Usage:
- *   catalog /datasets?q=risk            one-shot: resolve URL, print screen, exit
- *   catalog /datasets/104 --json        one-shot, machine-readable state
- *   catalog -i [url]                    interactive (also accepts piped commands)
- *   catalog -i --resume                 reopen last session's history stack
+ * bookshop — a web-like terminal app shared by a user and an agent.
+ *
+ *   bookshop search dune                        one-shot (as the user)
+ *   bookshop --as agent --json book 3           one-shot, JSON screen for agents
+ *   bookshop --as agent do user.updateEmail --email a@b.co   → proposal
+ *   bookshop                                    interactive terminal UI (user)
+ *   bookshop log --follow                       tail the shared action log
+ *
+ * Every process opens the same SQLite file (BOOKSHOP_DB or --db). The action
+ * log in it is the only sync channel between actors.
  */
-import { readFileSync, writeFileSync, existsSync } from 'node:fs'
 import { createInterface } from 'node:readline'
-import { createHeadlessRouter, type Snapshot } from './headless/router.js'
-import { routeTree } from './app/routes.js'
-import { createQueryClient } from './app/queries.js'
-import type { Screen } from './app/screen.js'
-import { collectCommands, GLOBAL_COMMANDS, renderText } from './render/text.js'
+import { openDb } from './core/db.js'
+import { createActionLog, describeEntry, type LogEntry } from './core/log.js'
+import { createSession, type Session } from './core/session.js'
+import { parseTokens, runCommand, splitLine, type CommandEnv, type CommandOutcome } from './core/commands.js'
+import { ValidationError } from './core/actions.js'
+import { collectCommands, renderBody, renderText, renderTitle, stripAnsi } from './render/text.js'
+import { createBackend } from './shop/backend.js'
+import { createActions } from './shop/actions.js'
+import { createQueries } from './shop/queries.js'
+import { createRouteTree } from './shop/routes.js'
 
-const SESSION_FILE = '.catalog-session.json'
-const argv = process.argv.slice(2)
-const flags = new Set(argv.filter((a) => a.startsWith('-')))
-const url = argv.find((a) => !a.startsWith('-'))
-const interactive = flags.has('-i') || flags.has('--interactive')
-const asJson = flags.has('--json')
+// ── args: global flags first, the rest is the command ───────────────────────
+const raw = process.argv.slice(2)
+const globals: Record<string, string | true> = {}
+const rest: string[] = []
+for (let i = 0; i < raw.length; i++) {
+  const t = raw[i]!
+  if (rest.length === 0 && ['--as', '--db'].includes(t)) globals[t.slice(2)] = raw[++i] ?? ''
+  else if (rest.length === 0 && ['--json', '-i', '--interactive', '--no-color'].includes(t)) globals[t.replace(/^-+/, '')] = true
+  else rest.push(t)
+}
+const actor = String(globals.as ?? 'user')
+const asJson = Boolean(globals.json)
 const tty = Boolean(process.stdout.isTTY)
-const color = tty && !flags.has('--no-color')
+const color = tty && !globals['no-color']
+const out = (s: string) => process.stdout.write((color ? s : stripAnsi(s)) + '\n')
 
-const strip = (s: string) => (color ? s : s.replace(/\x1b\[[0-9;]*m/g, ''))
-const out = (s: string) => process.stdout.write(strip(s) + '\n')
+// ── wiring ───────────────────────────────────────────────────────────────────
+const db = openDb(String(globals.db ?? process.env.BOOKSHOP_DB ?? 'bookshop.db'))
+const log = createActionLog(db)
+const api = createBackend(db)
+const actions = createActions(api)
+const queries = createQueries(api, log)
+const tree = createRouteTree(queries)
 
-// ── wire up ─────────────────────────────────────────────────────────────────
-let initialEntries = [url ?? '/']
-let initialIndex: number | undefined
-if (flags.has('--resume') && existsSync(SESSION_FILE)) {
-  const saved = JSON.parse(readFileSync(SESSION_FILE, 'utf8')) as { entries: string[]; index: number }
-  initialEntries = url ? [...saved.entries.slice(0, saved.index + 1), url] : saved.entries
-  initialIndex = url ? undefined : saved.index
+const session = await createSession({ actor, log, actions, createRouteTree: tree })
+const env: CommandEnv = {
+  session,
+  peek: (other) => createSession({ actor: other, cursorOf: other, readOnly: true, log, actions, createRouteTree: tree }),
 }
 
-const queryClient = createQueryClient()
-const app = createHeadlessRouter({
-  routeTree,
-  initialEntries,
-  initialIndex,
-  context: { queryClient },
-  // Query cache changes (refetch, invalidate, setQueryData) re-render the screen.
-  externalSources: [(notify) => queryClient.getQueryCache().subscribe(notify)],
-})
-const { router } = app
-const screenOf = (routeId: string) =>
-  (router.routesById as Record<string, { options: { staticData?: { screen?: Screen } } }>)[routeId]?.options
-    .staticData?.screen
+async function exec(tokens: string[]): Promise<CommandOutcome> {
+  try {
+    const outcome = await session.exclusive(async () => {
+      const o = await runCommand(env, parseTokens(tokens))
+      await session.settle()
+      return o
+    })
+    return outcome
+  } catch (e) {
+    const msg = e instanceof ValidationError ? `invalid input: ${e.message}` : `error: ${(e as Error).message}`
+    return { message: msg, exitCode: 1, screen: false }
+  }
+}
 
-const dumpState = (s: Snapshot) => ({
-  ...s,
-  queries: queryClient
-    .getQueryCache()
-    .getAll()
-    .map((q) => ({ key: q.queryKey, status: q.state.status, fetching: q.state.fetchStatus, stale: q.isStale() })),
-})
+function screenJson(s: Session, outcome?: CommandOutcome) {
+  const snap = s.snapshot()
+  const leaf = snap.matches.at(-1)
+  return {
+    actor: s.actor,
+    href: snap.href,
+    title: renderTitle(snap, s.screenOf, s.queryClient),
+    notFound: snap.notFound,
+    params: leaf?.params ?? {},
+    search: snap.search,
+    screen: stripAnsi(renderBody(snap, s.screenOf, s.queryClient)),
+    data: leaf?.loaderData ?? null,
+    commands: collectCommands(snap, s.screenOf).map(({ name, cmd }) => ({ name: cmd.usage ?? name, help: cmd.help })),
+    pending: s.log.pending(),
+    message: outcome?.message,
+    result: outcome?.data,
+  }
+}
 
-async function settle() {
-  await app.settled()
-  while (queryClient.isFetching()) await new Promise((r) => setTimeout(r, 5))
-  await new Promise((r) => setImmediate(r)) // flush coalesced re-render
+// ── `log --follow`: a live tail of the shared log ───────────────────────────
+if (rest[0] === 'log' && rest.includes('--follow')) {
+  log.tail(10).forEach((e) => out(asJson ? JSON.stringify(e) : describeEntry(e)))
+  let last = log.lastId()
+  setInterval(() => {
+    for (const e of log.since(last)) {
+      out(asJson ? JSON.stringify(e) : describeEntry(e))
+      last = e.id
+    }
+  }, 250)
 }
 
 // ── one-shot ────────────────────────────────────────────────────────────────
-if (!interactive) {
-  await app.start()
-  await settle()
-  const snap = app.snapshot()
-  out(asJson ? JSON.stringify(dumpState(snap), null, 2) : renderText(snap, screenOf, queryClient))
-  process.exit(snap.notFound ? 2 : 0)
+else if (rest.length && !globals.i && !globals.interactive) {
+  const outcome = await exec(rest)
+  if (asJson) out(JSON.stringify(outcome.screen === false ? { message: outcome.message, result: outcome.data } : screenJson(session, outcome), null, 2))
+  else {
+    if (outcome.screen !== false)
+      out(renderText(session.snapshot(), session.screenOf, session.queryClient, { actor, pending: log.pending(), message: outcome.message }))
+    else if (outcome.message) out(outcome.message)
+  }
+  session.dispose()
+  process.exit(outcome.exitCode ?? (session.snapshot().notFound ? 2 : 0))
 }
 
-// ── interactive ─────────────────────────────────────────────────────────────
-let last = ''
-app.onChange((snap) => {
-  if (snap.status === 'pending' && !tty) return // keep piped logs clean
-  const frame = renderText(snap, screenOf, queryClient)
-  if (frame === last) return
-  last = frame
-  if (tty) process.stdout.write('\x1b[2J\x1b[H')
-  else out('\n' + '═'.repeat(60))
-  out(frame)
-  if (snap.status === 'idle') {
-    writeFileSync(SESSION_FILE, JSON.stringify({ entries: snap.history.entries, index: snap.history.index }))
+// ── interactive terminal UI ─────────────────────────────────────────────────
+else {
+  const feed: LogEntry[] = []
+  let message = ''
+  let lastFrame = ''
+
+  const draw = () => {
+    const snap = session.snapshot()
+    if (snap.status === 'pending' && !tty) return
+    const frame = renderText(snap, session.screenOf, session.queryClient, {
+      actor,
+      following: session.following,
+      pending: log.pending(),
+      feed: feed.slice(-4),
+      message,
+    })
+    if (frame === lastFrame) return
+    lastFrame = frame
+    if (tty) process.stdout.write('\x1b[2J\x1b[H')
+    else out('\n' + '═'.repeat(64))
+    out(frame)
+    if (tty) rl.prompt(true)
   }
-})
 
-await app.start()
-await settle()
+  session.app.onChange(draw)
 
-const rl = createInterface({ input: process.stdin, output: process.stdout, prompt: tty ? '› ' : '' })
+  // Tail the log: other processes' entries invalidate queries and move cursors.
+  const tick = setInterval(() => {
+    void session.exclusive(async () => {
+      const fresh = await session.sync()
+      if (fresh.length) {
+        feed.push(...fresh)
+        draw()
+      }
+    })
+  }, 300)
 
-async function run(line: string) {
-  const [name, ...args] = line.trim().split(/\s+/)
-  if (!name) return
-  if (!tty) out(`› ${line.trim()}`)
-  const snap = app.snapshot()
-  switch (name) {
-    case 'quit':
-    case 'exit':
-      rl.close()
-      return
-    case 'back':
-      return router.history.back()
-    case 'forward':
-      return router.history.forward()
-    case 'go':
-      return router.navigate({ href: args[0] ?? '/' })
-    case 'refresh':
-      return queryClient.invalidateQueries()
-    case 'history':
-      return out(snap.history.entries.map((e, i) => `${i === snap.history.index ? '→' : ' '} ${e}`).join('\n'))
-    case 'state':
-      return out(JSON.stringify(dumpState(snap), null, 2))
-    case 'help': {
-      const local = collectCommands(snap, screenOf).map(({ name, cmd }) => [cmd.usage ?? name, cmd.help])
-      return out(
-        [...local, ...Object.entries(GLOBAL_COMMANDS)].map(([u, h]) => `  ${u!.padEnd(18)} ${h}`).join('\n'),
-      )
-    }
-  }
-  const found = collectCommands(snap, screenOf).find((c) => c.name === name)
-  if (!found) return out(`unknown command "${name}" — try help`)
-  return found.cmd.run({
-    args,
-    match: snap.matches[found.matchIndex]!,
-    snapshot: snap,
-    queryClient,
-    navigate: router.navigate,
+  const rl = createInterface({ input: process.stdin, output: process.stdout, prompt: tty ? `${actor}› ` : '' })
+  draw()
+  rl.prompt()
+
+  let chain = Promise.resolve()
+  rl.on('line', (line) => {
+    const tokens = splitLine(line.trim())
+    if (!tokens.length) return rl.prompt()
+    if (tokens[0] === 'quit' || tokens[0] === 'exit') return rl.close()
+    chain = chain.then(async () => {
+      if (!tty) out(`${actor}› ${line.trim()}`)
+      const outcome = await exec(tokens)
+      if (outcome.screen === false) {
+        message = ''
+        out(outcome.message ?? '')
+      } else {
+        message = outcome.message ?? ''
+        lastFrame = ''
+        draw()
+      }
+      rl.prompt()
+    })
+  })
+  rl.on('close', () => {
+    void chain.then(() => {
+      clearInterval(tick)
+      session.dispose()
+      process.exit(0)
+    })
   })
 }
-
-// Serialise commands so piped scripts behave deterministically.
-let chain = Promise.resolve()
-rl.on('line', (line) => {
-  chain = chain
-    .then(() => run(line))
-    .then(settle)
-    .catch((e) => out(`error: ${(e as Error).message}`))
-    .then(() => rl.prompt())
-})
-rl.on('close', () => {
-  void chain.then(() => {
-    app.dispose()
-    process.exit(0)
-  })
-})
-rl.prompt()

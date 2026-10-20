@@ -1,54 +1,76 @@
-# Headless TanStack Router + Query in the terminal
+# Headless CLI UI framework: the bookshop demo
 
-The URL is the whole app state. `@tanstack/router-core` runs its normal client
-pipeline in Node: loaders, `validateSearch`, `loaderDeps`, `beforeLoad`
-redirects, `notFound`, nested routes and back/forward. `@tanstack/query-core`
-owns server state. The terminal is only a projection of
-`(router snapshot, query cache) → text`.
+A web-like terminal app that a **user and an agent use together**. It runs on a
+headless TanStack Router (`@tanstack/router-core`) and TanStack Query
+(`@tanstack/query-core`). The URL is each actor's UI state, and a shared,
+append-only **action log** is the only thing that keeps them in sync.
 
 ```
 npm i
-npm start -- /datasets?q=risk          # one-shot: render the URL and exit
-npm start -- /datasets/104 --json      # one-shot, machine-readable state + query cache
-npm start -- -i /datasets              # interactive (piped commands work too)
-npm start -- -i --resume               # reopen last session's history stack
+npm run bookshop                                   # interactive terminal UI (as the user)
+npm run bookshop -- search gothic                  # one-shot: navigate, print the screen, exit
+npm run bookshop -- --as agent --json book 4       # what an agent sees: JSON screen + data + commands
+npm run bookshop -- --as agent do user.updateEmail --email a@b.co   # → proposal, exit code 3
+npm run bookshop -- approve 8                      # user approves (or do it in the terminal UI)
+npm run bookshop -- log --follow                   # tail the shared log
+./scripts/demo.sh                                  # scripted user + agent session, side by side
 ```
+
+Every process opens the same SQLite file (`bookshop.db`, or `--db` /
+`BOOKSHOP_DB`). SQLite is built into Node 22 (`node:sqlite`).
+
+## The model
+
+| Concept | What it is |
+| --- | --- |
+| **Read** | Navigation. `search gothic`, `book 4` and `set sort=price` only change a URL. |
+| **Write** | A named, typed **action** (`cart.add`, `user.updateEmail`, `order.place`). |
+| **Action log** | Append-only entries: `navigate`, `propose`, `apply`, `reject`, `fail`. Nothing is updated in place. |
+| **Cursor** | Each actor has their own location, rebuilt by replaying their `navigate` entries. Run any one-shot command and it continues where that actor left off. |
+| **Sync** | Each process tails the log. Another actor's `apply` invalidates the matching queries, so the screen updates. The same actor navigating in another terminal moves this one too. |
+| **Follow** | `follow agent` moves your cursor with the agent's, Figma-style. Cursors are separate by default, so the agent never yanks your screen. |
+| **Approval** | Actions marked `requiresApproval` can only be *proposed* by non-user actors. The user sees `⚑ #8 agent wants …` and runs `approve 8` or `reject 8 reason`. `precheck` refuses proposals that are bound to fail, such as checking out an empty cart. |
+| **Agent interface** | `--json` returns the screen as text plus the leaf route's data and available commands. `tools` returns a manifest of routes, search-param schemas, actions and their JSON Schemas, because TypeBox schemas *are* JSON Schema. `peek user` shows what the user is looking at, and `wait <id>` blocks until a proposal is decided. |
 
 ## Layout
 
-| File | Role |
-| --- | --- |
-| `src/headless/router.ts` | `createHeadlessRouter()`: memory history, non-reactive stores, history→load driver (what React's `<Transitioner>` does), `snapshot()` / `onChange()`, external sources such as the query cache |
-| `src/app/routes.ts` | Code-based route tree. Each route declares `staticData.screen = { title, view, commands }` |
-| `src/app/queries.ts` | `QueryClient` and query option factories, passed to loaders via router `context` |
-| `src/render/text.ts` | Pure renderer. Composes views leaf→root, passing each child's output as `outlet` |
-| `src/cli.ts` | One-shot, `--json` and interactive (REPL, read-eval-print loop) modes, plus session persistence |
+```
+src/headless/router.ts   headless TanStack Router: memory history, non-reactive stores, history→load driver
+src/core/log.ts          the shared action log (SQLite), cursor replay, pending proposals
+src/core/actions.ts      defineAction, TypeBox validation/coercion, approval policy, searchParams()
+src/core/session.ts      one actor in one process: router + QueryClient + dispatch/approve/sync/follow
+src/core/commands.ts     framework commands (go, back, set, do, approve, peek, wait, tools, …)
+src/core/screen.ts       what a route contributes: title, view (pure), commands (intents)
+src/render/text.ts       pure renderer; nested views compose through `outlet`
+src/shop/*               the app: backend, actions, queries, routes
+src/cli.ts               one-shot, --json, interactive terminal UI, log --follow
+```
 
-## Rules the demo follows
-- **Views are pure.** `view(match, { queryClient, outlet })` → string, with no local state.
-- **Commands are intents.** They either `navigate()` (search params, path params) or
-  mutate and then `invalidateQueries()`. The query cache subscription re-renders
-  the screen with no navigation.
-- **Loaders prime, views read.** `ensureQueryData` in the loader; `getQueryData` in the view.
+App code (`src/shop`) never sees the log, the sync loop or the router quirks.
+Routes declare `staticData.screen = { title, view, commands, search }`. Loaders
+prime the query cache with `ensureQueryData`, views read it with
+`getQueryData`, and commands either `navigate()` or `dispatch()`.
 
-## Gotchas
+## Gotchas handled by the wrapper
 1. **Run Node with `--conditions=development`.** Under the `node` export
    condition, router-core hard-codes `isServer = true` and takes the SSR
-   (server-side rendering) path. In that path `navigate()` never commits, and
-   redirects and notFound aren't handled. The wrapper throws a clear error if
-   the flag is missing.
+   (server-side rendering) path, where `navigate()` never commits. The
+   `npm run bookshop` script sets the flag.
 2. The router constructor reads `window?.origin`. The wrapper declares
-   `window = undefined`, which is enough to stop the throw while keeping
-   `typeof window === 'undefined'`.
-3. Query functions must not return `undefined`. Return `null` and throw
+   `window = undefined`.
+3. `@tanstack/history`'s `createMemoryHistory` ignores `initialIndex: 0`,
+   because it uses a truthiness check. The wrapper steps back manually so a
+   cursor that went back to its first entry restores correctly.
+4. With no query observers headless, nothing counts as "active", so
+   invalidation uses `refetchType: 'all'`.
+5. Query functions must not return `undefined`. Return `null` and throw
    `notFound()` in the loader.
-4. Memory history doesn't expose its stack, so the wrapper tracks entries
-   itself for `history` and `--resume`.
 
-Tested against router-core 1.171.38 and query-core 5.104.5. `RouterCore` and
-the store factories are public exports, but they're lower-level than the
-adapter APIs, so pin versions.
+Pinned to router-core 1.171.x, query-core 5.104.x and TypeBox 0.34.x.
 
-## Next steps
-- Swap `render/text.ts` for an Ink renderer. The snapshot and routes stay the same.
-- Replace the hand-written `validateSearch` with TypeBox schemas.
+## Ideas for next steps
+- A Model Context Protocol (MCP) server that exposes `tools` directly, so an
+  agent doesn't have to shell out.
+- An Ink renderer on the same snapshot and screens.
+- Undo, via inverse actions recorded in `apply` entries.
+- Per-action policies beyond user/agent, for example limits on order totals.

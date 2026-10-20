@@ -69,10 +69,12 @@ export interface HeadlessOptions<TTree extends AnyRoute> {
 
 export function createHeadlessRouter<TTree extends AnyRoute>(opts: HeadlessOptions<TTree>) {
   const entries = opts.initialEntries?.length ? opts.initialEntries : ['/']
-  const history = createMemoryHistory({
-    initialEntries: entries,
-    initialIndex: opts.initialIndex ?? entries.length - 1,
-  })
+  const wantIndex = opts.initialIndex ?? entries.length - 1
+  const history = createMemoryHistory({ initialEntries: entries, initialIndex: wantIndex })
+  // Gotcha #3: @tanstack/history treats `initialIndex: 0` as unset (`opts.initialIndex ? …`)
+  // and starts at the last entry. Step back manually; nothing is subscribed yet.
+  const actualIndex = history.location.state.__TSR_index as number | undefined
+  if (actualIndex !== undefined && actualIndex !== wantIndex) history.go(wantIndex - actualIndex)
 
   const router = new RouterCore(
     { routeTree: opts.routeTree, history, isServer: false, context: opts.context } as never,
