@@ -1,0 +1,26 @@
+{
+  "name": "headless-catalog",
+  "version": "1.0.0",
+  "description": "",
+  "scripts": {
+    "start": "tsx --conditions=development src/cli.ts",
+    "typecheck": "tsc --noEmit"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "@tanstack/history": "^1.162.5",
+    "@tanstack/query-core": "^5.104.5",
+    "@tanstack/router-core": "^1.171.38"
+  },
+  "devDependencies": {
+    "@types/node": "^26.6.5",
+    "tsx": "^4.23.15",
+    "typescript": "^7.0.2"
+  },
+  "type": "module",
+  "bin": {
+    "catalog": "src/cli.ts"
+  }
+}
