@@ -3,8 +3,9 @@
   "version": "1.0.0",
   "description": "",
   "scripts": {
-    "bookshop": "tsx --conditions=development --no-warnings=ExperimentalWarning src/cli.ts",
-    "typecheck": "tsc --noEmit"
+    "bookshop": "tsx --conditions=development --no-warnings=ExperimentalWarning src/bookshop/main.ts",
+    "typecheck": "tsc --noEmit",
+    "build": "node scripts/build-plugin.mjs"
   },
   "keywords": [],
   "author": "",
@@ -17,11 +18,16 @@
   },
   "devDependencies": {
     "@types/node": "^26.6.5",
+    "esbuild": "^0.28.2",
     "tsx": "^4.23.15",
     "typescript": "^7.0.2"
   },
   "type": "module",
   "bin": {
-    "bookshop": "src/cli.ts"
+    "bookshop": "src/bookshop/main.ts"
+  },
+  "imports": {
+    "#cui/jsx-runtime": "./src/framework/jsx-runtime.ts",
+    "#cui/jsx-dev-runtime": "./src/framework/jsx-runtime.ts"
   }
 }

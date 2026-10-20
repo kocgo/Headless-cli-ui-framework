@@ -1,6 +1,8 @@
 node_modules/
+.bookshop/
 *.db
 *.db-wal
 *.db-shm
 *.log
 demo-output/
+plugin/.claude-plugin/types/

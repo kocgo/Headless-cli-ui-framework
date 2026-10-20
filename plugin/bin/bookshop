@@ -1,0 +1,7 @@
+#!/bin/sh
+# The bookshop CLI. Claude runs it from its Bash tool (this folder is on that PATH
+# while the plugin is enabled); the pane runs it with --as user.
+# Inside Claude Code's Bash tool (CLAUDECODE=1) the actor defaults to "agent".
+# Needs Node.js 22.13 or later (built-in SQLite).
+DIR="$(cd "$(dirname "$0")/.." && pwd)"
+exec node --no-warnings=ExperimentalWarning "$DIR/dist/bookshop.mjs" "$@"

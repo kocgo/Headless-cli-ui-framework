@@ -65,6 +65,8 @@ export interface HeadlessOptions<TTree extends AnyRoute> {
    * TanStack Query cache: `(notify) => queryClient.getQueryCache().subscribe(notify)`.
    */
   externalSources?: Array<(notify: () => void) => () => void>
+  /** Extra RouterCore options, e.g. parseSearch / stringifySearch. */
+  routerOptions?: Record<string, unknown>
 }
 
 export function createHeadlessRouter<TTree extends AnyRoute>(opts: HeadlessOptions<TTree>) {
@@ -77,7 +79,7 @@ export function createHeadlessRouter<TTree extends AnyRoute>(opts: HeadlessOptio
   if (actualIndex !== undefined && actualIndex !== wantIndex) history.go(wantIndex - actualIndex)
 
   const router = new RouterCore(
-    { routeTree: opts.routeTree, history, isServer: false, context: opts.context } as never,
+    { ...opts.routerOptions, routeTree: opts.routeTree, history, isServer: false, context: opts.context } as never,
     // No reactivity system needed: we re-read state on router events.
     () => ({
       createMutableStore: createNonReactiveMutableStore,

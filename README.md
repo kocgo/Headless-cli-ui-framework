@@ -1,76 +1,152 @@
-# Headless CLI UI framework: the bookshop demo
+# Headless CLI UI framework
 
-A web-like terminal app that a **user and an agent use together**. It runs on a
-headless TanStack Router (`@tanstack/router-core`) and TanStack Query
-(`@tanstack/query-core`). The URL is each actor's UI state, and a shared,
-append-only **action log** is the only thing that keeps them in sync.
+A declarative framework for apps that **a person and an AI agent use together**.
+You declare pages, intents, views and actions once. From those declarations you get:
+
+- a **CLI** the agent drives (`bookshop search --query 1984`)
+- an **interactive terminal UI** for people
+- a **JSON contract** with the screen, its data, its business-logic model and every control's command
+- a **shared activity log** that keeps actors in sync and records what each one did and found
+- a **pane in Claude Code**, shipped as a plugin, drawing the same views
+
+It runs on a headless [TanStack Router](https://tanstack.com/router) (`@tanstack/router-core`) with [TanStack Query](https://tanstack.com/query) (`@tanstack/query-core`) and [TypeBox](https://github.com/sinclairzx81/typebox) schemas. No React.
+
+## Install the example as a Claude Code plugin
 
 ```
-npm i
-npm run bookshop                                   # interactive terminal UI (as the user)
-npm run bookshop -- search gothic                  # one-shot: navigate, print the screen, exit
-npm run bookshop -- --as agent --json book 4       # what an agent sees: JSON screen + data + commands
-npm run bookshop -- --as agent do user.updateEmail --email a@b.co   # → proposal, exit code 3
-npm run bookshop -- approve 8                      # user approves (or do it in the terminal UI)
-npm run bookshop -- log --follow                   # tail the shared log
-./scripts/demo.sh                                  # scripted user + agent session, side by side
+/plugin install bookshop --marketplace kocgo/headless-cli-ui-framework
 ```
 
-Every process opens the same SQLite file (`bookshop.db`, or `--db` /
-`BOOKSHOP_DB`). SQLite is built into Node 22 (`node:sqlite`).
+Then run `/shop` to open the pane, and ask Claude about books. Claude uses the `bookshop` CLI through its Bash tool (the plugin puts it on the PATH), guided by the plugin's skill. Requires Claude Code 2.1.287 or later (mods) and Node.js 22.13 or later.
 
-## The model
+## One declaration, everything derived
 
-| Concept | What it is |
-| --- | --- |
-| **Read** | Navigation. `search gothic`, `book 4` and `set sort=price` only change a URL. |
-| **Write** | A named, typed **action** (`cart.add`, `user.updateEmail`, `order.place`). |
-| **Action log** | Append-only entries: `navigate`, `propose`, `apply`, `reject`, `fail`. Nothing is updated in place. |
-| **Cursor** | Each actor has their own location, rebuilt by replaying their `navigate` entries. Run any one-shot command and it continues where that actor left off. |
-| **Sync** | Each process tails the log. Another actor's `apply` invalidates the matching queries, so the screen updates. The same actor navigating in another terminal moves this one too. |
-| **Follow** | `follow agent` moves your cursor with the agent's, Figma-style. Cursors are separate by default, so the agent never yanks your screen. |
-| **Approval** | Actions marked `requiresApproval` can only be *proposed* by non-user actors. The user sees `⚑ #8 agent wants …` and runs `approve 8` or `reject 8 reason`. `precheck` refuses proposals that are bound to fail, such as checking out an empty cart. |
-| **Agent interface** | `--json` returns the screen as text plus the leaf route's data and available commands. `tools` returns a manifest of routes, search-param schemas, actions and their JSON Schemas, because TypeBox schemas *are* JSON Schema. `peek user` shows what the user is looking at, and `wait <id>` blocks until a proposal is decided. |
+```tsx
+export const search = page('search', {
+  path: '/search',
+  params: Type.Object({
+    query: Type.Optional(Type.String()),
+    page: Type.Integer({ minimum: 1, default: 1 }),
+  }),
+  data: (p, { api }) => api.searchBooks(p),                  // fetch
+  summary: ({ data, params }) => `${data.total} results for "${params.query}"`,
+  intents: {
+    open: {                                                   // what you can do here
+      args: Type.Object({ row: Type.Integer({ minimum: 1 }) }),
+      to: ({ data, args }): Href => book.link({ id: data.items[args.row - 1]!.id }),
+    },
+    next: {
+      when: ({ data, params }) => params.page < data.pages || 'already on the last page',
+      to: ({ params, link }) => link({ ...params, page: params.page + 1 }),
+    },
+  },
+  view: ({ data, params }) => (                               // how it looks
+    <Page title={`Results for "${params.query}"`}>
+      <Table rows={data.items} rowIntent="open" columns={[col('title'), col('author')]} />
+      <Button intent="next" label="Next" hotkey="n" />
+    </Page>
+  ),
+})
+```
+
+`bookshop search --query 1984` then:
+
+| Concern | Derived from | Result |
+| --- | --- | --- |
+| Command and flags | page name + `params` | `search [--query <query>] [--page <page>]`, validated and coerced |
+| URL | `path` + `params` | `/search?query=1984`, pushed to this actor's history |
+| Request | `data` | through the TanStack Query cache, key `['search', params]` |
+| Output | `data`, `model`, `view` | the JSON envelope's `screen` |
+| Log | page + params + `summary` | `agent → search {"query":"1984"} · 1 result for "1984"` |
+| Next steps | `intents` | `open <row>`, `next`, with availability and reasons |
+
+### The layers of a page
+
+| Layer | Holds | Notes |
+| --- | --- | --- |
+| `params` | path and search params (TypeBox) | also the CLI flags, and the agent's schema |
+| `data` | fetching | return `null` for "not found" |
+| `model` | business logic over the data | pure; part of the JSON, so the agent reads facts, not pixels |
+| `intents` | what you can do: `to` (navigate) or `do` (action) | `when` decides availability for the user and the agent at once |
+| `view` | presentation only | `Page`, `Section`, `Row`, `Stack`, `Text`, `Table`, `KeyValue`, `Badge`, `Link`, `Button`, `Input`, `Divider` |
+| `summary` | one line for the activity log | |
+
+Domain rules live in plain modules (`src/bookshop/domain/`) that `model`, `when` and an action's `precheck` all call, so the screen and the write can't disagree.
+
+Controls in a view name an intent or a param instead of holding a callback (`<Button intent="next">`, `rowIntent="open"`, `<Input param="query">`). The engine binds each one to the exact CLI command that performs it. The view is plain data, so it renders as terminal text, as JSON for the agent, and as Claude Code elements in the pane, and a press anywhere runs the same command.
+
+### Actions
+
+```ts
+export const order = actions('order', {
+  place: action({
+    description: 'Place an order for everything in the cart',
+    input: Type.Object({}),
+    requiresApproval: true,                       // the agent can only propose it
+    precheck: async (_i, { api }) => checkoutBlockers(await api.getCart())[0],
+    run: async (_i, { api }) => api.placeOrder(…),
+    invalidates: ['cart', 'account', 'shell'],    // pages whose queries refetch everywhere
+    summary: (_i, r) => `order #${r.orderId} placed`,
+  }),
+})
+```
+
+## The CLI
+
+```
+bookshop [--as <actor>] [--json] [--db <path>] <command> [args…] [--flag value…]
+bookshop                        # interactive terminal UI
+```
+
+Commands are looked up in this order: framework commands, then intents on the current screen, then page names.
+
+- **Pages:** `search --query dune`, `book 4`, `cart`, `account`, `activity`
+- **Intents** (current page): `open 2`, `next`, `add 2`, `checkout`, `email a@b.co`
+- **Framework:** `go <href>`, `back`, `forward`, `set k=v`, `unset k`, `reload`, `show`, `do <action> [--check]`, `pending`, `approve <id>`, `reject <id> [reason]`, `wait <id>`, `peek <actor>`, `follow <actor>`, `log [n] [--since id] [--follow]`, `tools`, `help`, `whoami`
+
+**Actor:** `--as`, then `BOOKSHOP_ACTOR`, then `agent` inside Claude Code's Bash tool (`CLAUDECODE=1`), then `user`. Each actor has its own history, replayed from the log.
+
+**Exit codes:** 0 done · 1 bad input · 2 not found · 3 proposed, awaiting approval · 4 refused (unavailable or precheck) · 5 timed out · 6 not allowed · 70 internal
+
+**`--json`** prints one versioned envelope: `{ v, ok, actor, command, message, result, screen?, pending, error }`. `screen` holds `page`, `href`, `title`, `status`, `params`, `data`, `model`, `summary`, `view`, `text`, `intents` and `controls`.
 
 ## Layout
 
 ```
-src/headless/router.ts   headless TanStack Router: memory history, non-reactive stores, history→load driver
-src/core/log.ts          the shared action log (SQLite), cursor replay, pending proposals
-src/core/actions.ts      defineAction, TypeBox validation/coercion, approval policy, searchParams()
-src/core/session.ts      one actor in one process: router + QueryClient + dispatch/approve/sync/follow
-src/core/commands.ts     framework commands (go, back, set, do, approve, peek, wait, tools, …)
-src/core/screen.ts       what a route contributes: title, view (pure), commands (intents)
-src/render/text.ts       pure renderer; nested views compose through `outlet`
-src/shop/*               the app: backend, actions, queries, routes
-src/cli.ts               one-shot, --json, interactive terminal UI, log --follow
+src/framework/            the framework
+  declare.ts              page(), layout(), action(), actions() — the authoring API
+  view.ts, jsx-runtime.ts the view primitives and a React-free JSX runtime
+  app.ts                  defineApp(): validation and framework commands
+  engine/                 headless router, route compilation, screen resolution,
+                          session (cursor, intents, dispatch, approvals, sync), activity log
+  cli/                    command layer, JSON envelope, text renderer, interactive UI
+src/bookshop/             the example app: api, domain rules, actions, pages
+plugin/                   the Claude Code plugin
+  bin/bookshop            launcher (on Claude's PATH)
+  dist/bookshop.mjs       bundled CLI (npm run build)
+  skills/bookshop/        teaches Claude the CLI
+  hooks/pane.ts           the mod: /shop pane, refresh on Claude's calls, prompt context
+  tests/                  pane tests (claude plugin test)
 ```
 
-App code (`src/shop`) never sees the log, the sync loop or the router quirks.
-Routes declare `staticData.screen = { title, view, commands, search }`. Loaders
-prime the query cache with `ensureQueryData`, views read it with
-`getQueryData`, and commands either `navigate()` or `dispatch()`.
+## Develop
 
-## Gotchas handled by the wrapper
-1. **Run Node with `--conditions=development`.** Under the `node` export
-   condition, router-core hard-codes `isServer = true` and takes the SSR
-   (server-side rendering) path, where `navigate()` never commits. The
-   `npm run bookshop` script sets the flag.
-2. The router constructor reads `window?.origin`. The wrapper declares
-   `window = undefined`.
-3. `@tanstack/history`'s `createMemoryHistory` ignores `initialIndex: 0`,
-   because it uses a truthiness check. The wrapper steps back manually so a
-   cursor that went back to its first entry restores correctly.
-4. With no query observers headless, nothing counts as "active", so
-   invalidation uses `refetchType: 'all'`.
-5. Query functions must not return `undefined`. Return `null` and throw
-   `notFound()` in the loader.
+```
+npm i
+npm run bookshop -- search --query gothic      # run from source
+npm run typecheck
+npm run build                                  # bundle into plugin/dist
+claude plugin validate plugin && claude plugin test plugin
+./scripts/demo.sh                              # a scripted user + agent session
+claude --plugin-dir ./plugin                   # try the pane
+```
 
-Pinned to router-core 1.171.x, query-core 5.104.x and TypeBox 0.34.x.
+## Gotchas the framework handles
 
-## Ideas for next steps
-- A Model Context Protocol (MCP) server that exposes `tools` directly, so an
-  agent doesn't have to shell out.
-- An Ink renderer on the same snapshot and screens.
-- Undo, via inverse actions recorded in `apply` entries.
-- Per-action policies beyond user/agent, for example limits on order totals.
+1. Under Node's `node` export condition, router-core hard-codes `isServer = true`, and `navigate()` never commits. The bundle bakes in the `development` condition; from source, run with `--conditions=development`.
+2. The router constructor reads `window?.origin`; the engine declares `window = undefined`.
+3. `createMemoryHistory` ignores `initialIndex: 0` (a truthiness check). The engine steps back manually.
+4. Headless, no query has observers, so invalidation uses `refetchType: 'all'`.
+5. URLs use plain query strings (`?query=1984`) with schema coercion, and omit default values, instead of TanStack's JSON-typed encoding.
+
+Tested with router-core 1.171, query-core 5.104, TypeBox 0.34 and Claude Code 2.1.304.

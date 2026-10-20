@@ -1,14 +1,23 @@
 {
   "compilerOptions": {
-    "target": "ES2022",
+    "target": "ES2023",
     "module": "NodeNext",
     "moduleResolution": "NodeNext",
-    "customConditions": ["development"],
+    "customConditions": [
+      "development"
+    ],
     "strict": true,
     "noUncheckedIndexedAccess": true,
     "skipLibCheck": true,
-    "types": ["node"],
-    "noEmit": true
+    "types": [
+      "node"
+    ],
+    "noEmit": true,
+    "jsx": "react-jsx",
+    "jsxImportSource": "#cui",
+    "allowImportingTsExtensions": true
   },
-  "include": ["src"]
+  "include": [
+    "src"
+  ]
 }

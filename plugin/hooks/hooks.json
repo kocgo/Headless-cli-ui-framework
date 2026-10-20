@@ -1,0 +1,1 @@
+{ "description": "The bookshop pane", "modules": ["./pane.ts"] }

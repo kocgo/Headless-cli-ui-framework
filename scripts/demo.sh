@@ -1,36 +1,33 @@
 #!/bin/bash
+# A scripted session: the user in the interactive terminal UI, Claude (the agent)
+# calling the CLI, both on one database. Outputs go to demo-output/.
 cd "$(dirname "$0")/.."
-S="${S:-demo-output}"; mkdir -p "$S"; export BOOKSHOP_DB="$S/demo.db"; rm -f "$BOOKSHOP_DB"*
-B="npx tsx --conditions=development --no-warnings=ExperimentalWarning src/cli.ts"
-pid_of_pending() { $B --json pending | node -e 'let s="";process.stdin.on("data",d=>s+=d).on("end",()=>{const r=JSON.parse(s).result;console.log(r.at(-1)?.id??"")})'; }
-A="$S/agent.out"; : > $A
-agent() { echo "\$ bookshop --as agent $*" >> $A; $B --as agent "$@" >> $A 2>&1; echo "[exit $?]" >> $A; }
+OUT="${OUT:-demo-output}"; mkdir -p "$OUT"; DB="$OUT/demo.db"; rm -f "$DB"*
+B="plugin/bin/bookshop --db $DB"
+A="$OUT/agent.out"; : > "$A"
+agent() { echo "\$ bookshop --as agent $*" >> "$A"; $B --as agent "$@" >> "$A" 2>&1; echo "[exit $?]" >> "$A"; }
+last_proposal() { $B --json pending | node -e 'let s="";process.stdin.on("data",d=>s+=d).on("end",()=>console.log(JSON.parse(s).result.at(-1)?.id ?? ""))'; }
 
-# user's terminal UI, fed by a timed script
 (
-  echo cart; sleep 2
-  echo "follow agent"; sleep 6
-  ID=$(pid_of_pending); echo "approve $ID"; sleep 4
-  ID=$(pid_of_pending); echo "reject $ID not yet, I'm still browsing"; sleep 3
-  echo unfollow; sleep 4
-  sleep 2; echo quit
-) | $B -i > $S/user.out 2>&1 &
+  echo search --query gothic; sleep 1.5
+  echo follow agent; sleep 5
+  echo "approve $(last_proposal)"; sleep 3
+  echo "approve $(last_proposal)"; sleep 3
+  echo unfollow; echo account; sleep 1; echo quit
+) | $B --as user -i > "$OUT/user.out" 2>&1 &
 UI=$!
-sleep 1.5
-agent search gothic
 sleep 1
-agent open 2                       # user is following: their screen moves too
-agent add                          # mutation: user's cart badge updates
-agent do user.updateEmail --email gokhan@example.com   # needs approval → proposal
-$B --as agent wait $(pid_of_pending) --timeout 20 > $S/wait1.out 2>&1 &
-sleep 4
-cat $S/wait1.out >> $A
+agent peek user
+agent search --query dystopia
+agent open 1
+agent add 2
+agent add 99                                   # refused by the precheck: exit 4
+agent do user.updateEmail --email gokhan@example.com   # proposal: exit 3
+agent wait "$(last_proposal)" --timeout 20
 agent cart
-agent checkout                     # proposal; user rejects it
-sleep 4
-agent peek user                    # what is the user looking at?
-$B account > /dev/null             # user acts from ANOTHER terminal: TUI jumps
-sleep 2
-agent --json peek user
+agent checkout                                 # proposal: exit 3
+agent wait "$(last_proposal)" --timeout 20
+agent checkout                                 # cart now empty: unavailable, exit 4
 wait $UI
-echo "user terminal: $S/user.out   agent calls: $S/agent.out"
+$B log 40 > "$OUT/log.txt"
+echo "user: $OUT/user.out  agent: $OUT/agent.out  log: $OUT/log.txt"

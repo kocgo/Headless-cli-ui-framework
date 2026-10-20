@@ -1,0 +1,6 @@
+{
+  "name": "bookshop",
+  "version": "0.1.0",
+  "description": "A bookshop you and Claude use together: a pane for you, a CLI for Claude, one shared activity log",
+  "author": { "name": "kocgo" }
+}

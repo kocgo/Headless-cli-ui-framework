@@ -1,0 +1,13 @@
+{
+  "name": "headless-cli-ui-framework",
+  "description": "A declarative framework for apps a person and Claude use together, with a bookshop example plugin",
+  "owner": {
+    "name": "kocgo"
+  },
+  "plugins": [
+    {
+      "name": "bookshop",
+      "source": "./plugin"
+    }
+  ]
+}
