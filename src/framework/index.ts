@@ -9,7 +9,7 @@ export { defineApp, FRAMEWORK_COMMANDS } from './app.js'
 export type { App, AppDef, Services } from './app.js'
 export { runCli } from './cli/main.js'
 export {
-  Badge, Button, Divider, Input, KeyValue, Link, Page, Row, Section, Stack, Table, Text, col,
+  Badge, Button, Divider, Input, KeyValue, Link, Outlet, Page, Row, Section, Stack, Table, Tabs, Text, col,
 } from './view.js'
 export type { Href, ViewNode, ViewElement, Tone } from './view.js'
 export type { LogEntry } from './engine/log.js'

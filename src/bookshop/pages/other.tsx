@@ -1,16 +1,17 @@
 import { Type } from '@sinclair/typebox'
-import { Badge, Divider, Input, KeyValue, Link, Page, Row, Stack, Table, Text, col, describeEntry, type LogEntry } from '../../framework/index.js'
+import { Badge, Divider, Input, KeyValue, Link, Outlet, Page, Row, Stack, Table, Text, col, describeEntry, type LogEntry } from '../../framework/index.js'
 import { user } from '../actions.js'
 import type { Order } from '../api.js'
 import { gbp, priceCart } from '../domain/cart.js'
 import { layout, page } from '../kit.js'
 import { search } from './search.js'
+import { shelf } from './shelf.js'
 
 /** Wraps every page: title bar, cart badge, a search box, then the page (`outlet`). */
 export const shell = layout('shell', {
   data: (_p, { api }) => api.getCart(),
   model: ({ data }) => ({ items: priceCart(data).items }),
-  view: ({ model, outlet }) => (
+  view: ({ model }) => (
     <Stack gap={1}>
       <Row>
         <Text tone="bold">Bookshop</Text>
@@ -18,7 +19,7 @@ export const shell = layout('shell', {
       </Row>
       <Input page={search} param="query" label="Search" placeholder="title, author or genre" />
       <Divider />
-      {outlet}
+      <Outlet />
     </Stack>
   ),
 })
@@ -29,8 +30,12 @@ export const home = page('home', {
   data: (_p, { api }) => api.genres(),
   title: 'Bookshop',
   view: ({ data }) => (
-    <Page title="Welcome" subtitle="Browse by genre, or search above.">
-      <Row>{data.map((g) => <Link to={search.link({ genre: g })}>{g}</Link>)}</Row>
+    <Page title="Welcome" subtitle="Browse a shelf, or search above.">
+      <Row>
+        {data.map((g) => (
+          <Link key={g} to={shelf.link({ genre: g })}>{g}</Link>
+        ))}
+      </Row>
     </Page>
   ),
 })

@@ -13,7 +13,8 @@
  */
 import { Type, type Static, type TObject, type TProperties } from '@sinclair/typebox'
 import { EmptyObject, defaultOf, stringifyQuery } from './schema.js'
-import type { Href, ViewElement, ViewNode } from './view.js'
+import type { ReactNode } from 'react'
+import type { Href } from './view.js'
 
 // ── state passed to every function of a page ───────────────────────────────
 export interface PageState<Pr, D, M, Par = null> {
@@ -66,10 +67,11 @@ export interface PageDef<Ctx, P extends TObject, D, M, I extends Record<string, 
   summary?: (s: PageState<Static<P>, NonNullable<D>, M, Par>) => string
   intents?: { [K in keyof I]: IntentDef<Static<P>, NonNullable<D>, M, Par, I[K] extends TObject ? I[K] : NoArgs> }
   /**
-   * `outlet`: the active child's view ('' when none).
-   * `tabs`: the tab bar with the active tab's view under it ('' when the page has no tabs).
+   * React, rendered headless. Use TanStack's <Outlet /> for the active child
+   * route, or the framework's <Tabs /> for a tab bar plus the active tab.
+   * Hooks work (it runs as a component), but keep logic in `model`.
    */
-  view?: (s: PageState<Static<P>, NonNullable<D>, M, Par> & { outlet: ViewNode; tabs: ViewNode }) => ViewElement
+  view?: (s: PageState<Static<P>, NonNullable<D>, M, Par>) => ReactNode
 }
 
 type Props<T> = T extends TObject<infer X> ? X : never
@@ -245,6 +247,12 @@ export function declare<Ctx>() {
       return defs
     },
   }
+}
+
+/** Positional params: the page's own, else its nearest ancestor's (a tab takes `genre slug` like its book). */
+export function positionalOf(p: AnyPage): string[] {
+  for (let a: AnyPage | undefined = p; a; a = a.parent) if (a.def.positional) return a.def.positional as string[]
+  return []
 }
 
 /** A page and all its descendants, parents first. */

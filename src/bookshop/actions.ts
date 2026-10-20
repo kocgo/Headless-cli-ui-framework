@@ -48,7 +48,7 @@ export const order = actions('order', {
     // Same rule the cart page shows and the checkout intent checks.
     precheck: async (_i, { api }) => checkoutBlockers(await api.getCart())[0],
     run: async (_i, { api }) => api.placeOrder(priceCart(await api.getCart()).total),
-    invalidates: ['cart', 'account', 'search', 'book', 'shell'],
+    invalidates: ['cart', 'account', 'search', 'shelf', 'book', 'shell'],
     summary: (_i, r) => `order #${r.orderId} placed, ${r.items} line(s), ${gbp(r.total)}`,
   }),
 })

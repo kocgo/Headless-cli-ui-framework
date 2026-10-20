@@ -6,6 +6,7 @@
  *   do cart.add --bookId 3 → an action by name
  */
 import { FRAMEWORK_COMMANDS, type App } from '../app.js'
+import { positionalOf } from '../declare.js'
 import { defaultOf, schemaJson } from '../schema.js'
 import { AppError, EXIT } from '../engine/errors.js'
 import { describeEntry } from '../engine/log.js'
@@ -176,7 +177,7 @@ export async function runCommand(env: CommandEnv, line: ParsedLine): Promise<Out
 
 function pageUsage(name: string, app: App) {
   const p = app.page(name)!
-  const positional = (p.def.positional as string[] | undefined) ?? []
+  const positional = positionalOf(p)
   const required = new Set(p.params.required ?? [])
   const parts = Object.keys(p.params.properties ?? {}).map((k) => {
     const v = positional.includes(k) ? `<${k}>` : `--${k} <${k}>`

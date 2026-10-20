@@ -22,6 +22,7 @@ export const search = {
       "items": [
         {
           "id": "6",
+          "slug": "dracula",
           "title": "Dracula",
           "author": "Bram Stoker",
           "genre": "gothic",
@@ -30,6 +31,7 @@ export const search = {
         },
         {
           "id": "5",
+          "slug": "frankenstein",
           "title": "Frankenstein",
           "author": "Mary Shelley",
           "genre": "gothic",
@@ -38,6 +40,7 @@ export const search = {
         },
         {
           "id": "7",
+          "slug": "wuthering-heights",
           "title": "Wuthering Heights",
           "author": "Emily Brontë",
           "genre": "gothic",
@@ -51,192 +54,195 @@ export const search = {
         "dystopia",
         "gothic",
         "romance",
-        "sci-fi"
+        "science"
       ]
     },
     "model": null,
     "summary": "3 results for \"gothic\"",
     "view": {
-      "type": "Stack",
+      "type": "Scope",
       "props": {
-        "gap": 1,
-        "boundTo": "shell"
+        "page": "shell"
       },
       "children": [
         {
-          "type": "Row",
+          "type": "Stack",
           "props": {
-            "boundTo": "shell"
+            "gap": 1
           },
           "children": [
             {
-              "type": "Text",
-              "props": {
-                "tone": "bold",
-                "boundTo": "shell"
-              },
+              "type": "Row",
+              "props": {},
               "children": [
-                "Bookshop"
+                {
+                  "type": "Text",
+                  "props": {
+                    "tone": "bold"
+                  },
+                  "children": [
+                    "Bookshop"
+                  ]
+                },
+                {
+                  "type": "Badge",
+                  "props": {},
+                  "children": [
+                    "cart empty"
+                  ]
+                }
               ]
             },
             {
-              "type": "Badge",
+              "type": "Input",
               "props": {
-                "boundTo": "shell"
-              },
-              "children": [
-                "cart empty"
-              ]
-            }
-          ]
-        },
-        {
-          "type": "Input",
-          "props": {
-            "param": "query",
-            "label": "Search",
-            "placeholder": "title, author or genre",
-            "page": "search",
-            "boundTo": "shell",
-            "submit": {
-              "argv": [
-                "search",
-                "--query"
-              ],
-              "template": "{value}"
-            }
-          },
-          "children": []
-        },
-        {
-          "type": "Divider",
-          "props": {
-            "boundTo": "shell"
-          },
-          "children": []
-        },
-        {
-          "type": "Page",
-          "props": {
-            "title": "Results for \"gothic\"",
-            "subtitle": "3 book(s) · sorted by title · genre: all (adventure, classic, dystopia, gothic, romance, sci-fi)",
-            "boundTo": "search"
-          },
-          "children": [
-            {
-              "type": "Table",
-              "props": {
-                "columns": [
-                  {
-                    "key": "title",
-                    "label": "title",
-                    "align": "left"
-                  },
-                  {
-                    "key": "author",
-                    "label": "author",
-                    "align": "left"
-                  },
-                  {
-                    "key": "price",
-                    "label": "price",
-                    "align": "right"
-                  },
-                  {
-                    "key": "stock",
-                    "label": "",
-                    "align": "left"
-                  }
-                ],
-                "rows": [
-                  {
-                    "cells": [
-                      "Dracula",
-                      "Bram Stoker",
-                      "£8.25",
-                      ""
-                    ],
-                    "command": [
-                      "open",
-                      "1"
-                    ]
-                  },
-                  {
-                    "cells": [
-                      "Frankenstein",
-                      "Mary Shelley",
-                      "£6.99",
-                      ""
-                    ],
-                    "command": [
-                      "open",
-                      "2"
-                    ]
-                  },
-                  {
-                    "cells": [
-                      "Wuthering Heights",
-                      "Emily Brontë",
-                      "£7.25",
-                      ""
-                    ],
-                    "command": [
-                      "open",
-                      "3"
-                    ]
-                  }
-                ],
-                "rowIntent": "open",
-                "empty": "No books match.",
-                "boundTo": "search"
+                "param": "query",
+                "label": "Search",
+                "placeholder": "title, author or genre",
+                "page": "search",
+                "submit": {
+                  "argv": [
+                    "search",
+                    "--query"
+                  ],
+                  "template": "{value}"
+                }
               },
               "children": []
             },
             {
-              "type": "Row",
+              "type": "Divider",
+              "props": {},
+              "children": []
+            },
+            {
+              "type": "Scope",
               "props": {
-                "boundTo": "search"
+                "page": "search"
               },
               "children": [
                 {
-                  "type": "Button",
+                  "type": "Page",
                   "props": {
-                    "intent": "prev",
-                    "label": "Previous",
-                    "hotkey": "p",
-                    "boundTo": "search",
-                    "command": [
-                      "prev"
-                    ],
-                    "disabled": true,
-                    "reason": "already on the first page"
-                  },
-                  "children": []
-                },
-                {
-                  "type": "Text",
-                  "props": {
-                    "tone": "dim",
-                    "boundTo": "search"
+                    "title": "Results for \"gothic\"",
+                    "subtitle": "3 book(s) · sorted by title · genre: all (adventure, classic, dystopia, gothic, romance, science)"
                   },
                   "children": [
-                    "page 1 of 1"
+                    {
+                      "type": "Table",
+                      "props": {
+                        "columns": [
+                          {
+                            "key": "title",
+                            "label": "title",
+                            "align": "left"
+                          },
+                          {
+                            "key": "author",
+                            "label": "author",
+                            "align": "left"
+                          },
+                          {
+                            "key": "price",
+                            "label": "price",
+                            "align": "right"
+                          },
+                          {
+                            "key": "stock",
+                            "label": "",
+                            "align": "left"
+                          }
+                        ],
+                        "rows": [
+                          {
+                            "cells": [
+                              "Dracula",
+                              "Bram Stoker",
+                              "£8.25",
+                              ""
+                            ],
+                            "command": [
+                              "open",
+                              "1"
+                            ]
+                          },
+                          {
+                            "cells": [
+                              "Frankenstein",
+                              "Mary Shelley",
+                              "£6.99",
+                              ""
+                            ],
+                            "command": [
+                              "open",
+                              "2"
+                            ]
+                          },
+                          {
+                            "cells": [
+                              "Wuthering Heights",
+                              "Emily Brontë",
+                              "£7.25",
+                              ""
+                            ],
+                            "command": [
+                              "open",
+                              "3"
+                            ]
+                          }
+                        ],
+                        "rowIntent": "open",
+                        "empty": "No books match."
+                      },
+                      "children": []
+                    },
+                    {
+                      "type": "Row",
+                      "props": {},
+                      "children": [
+                        {
+                          "type": "Button",
+                          "props": {
+                            "intent": "prev",
+                            "label": "Previous",
+                            "hotkey": "p",
+                            "command": [
+                              "prev"
+                            ],
+                            "disabled": true,
+                            "reason": "already on the first page"
+                          },
+                          "children": []
+                        },
+                        {
+                          "type": "Text",
+                          "props": {
+                            "tone": "dim"
+                          },
+                          "children": [
+                            "page ",
+                            "1",
+                            " of ",
+                            "1"
+                          ]
+                        },
+                        {
+                          "type": "Button",
+                          "props": {
+                            "intent": "next",
+                            "label": "Next",
+                            "hotkey": "n",
+                            "command": [
+                              "next"
+                            ],
+                            "disabled": true,
+                            "reason": "already on the last page"
+                          },
+                          "children": []
+                        }
+                      ]
+                    }
                   ]
-                },
-                {
-                  "type": "Button",
-                  "props": {
-                    "intent": "next",
-                    "label": "Next",
-                    "hotkey": "n",
-                    "boundTo": "search",
-                    "command": [
-                      "next"
-                    ],
-                    "disabled": true,
-                    "reason": "already on the last page"
-                  },
-                  "children": []
                 }
               ]
             }
@@ -244,7 +250,7 @@ export const search = {
         }
       ]
     },
-    "text": "Bookshop  [cart empty]\n\nSearch: title, author or genre▏ (search --query …)\n\n────────────────────────────────────────────────\n\nResults for \"gothic\"\n3 book(s) · sorted by title · genre: all (adventure, classic, dystopia, gothic, romance, sci-fi)\n\n   title              author        price\n1. Dracula            Bram Stoker   £8.25\n2. Frankenstein       Mary Shelley  £6.99\n3. Wuthering Heights  Emily Brontë  £7.25\n\n[p] Previous  page 1 of 1  [n] Next\n\nopen <row> · sort <by> · genre <name>",
+    "text": "Bookshop  [cart empty]\n\nSearch: title, author or genre▏ (search --query …)\n\n────────────────────────────────────────────────\n\nResults for \"gothic\"\n3 book(s) · sorted by title · genre: all (adventure, classic, dystopia, gothic, romance, science)\n\n   title              author        price\n1. Dracula            Bram Stoker   £8.25\n2. Frankenstein       Mary Shelley  £6.99\n3. Wuthering Heights  Emily Brontë  £7.25\n\n[p] Previous  page 1 of 1  [n] Next\n\nopen <row> · sort <by> · genre <name>",
     "intents": [
       {
         "name": "open",
@@ -418,6 +424,7 @@ export const withProposal = {
       "items": [
         {
           "id": "6",
+          "slug": "dracula",
           "title": "Dracula",
           "author": "Bram Stoker",
           "genre": "gothic",
@@ -426,6 +433,7 @@ export const withProposal = {
         },
         {
           "id": "5",
+          "slug": "frankenstein",
           "title": "Frankenstein",
           "author": "Mary Shelley",
           "genre": "gothic",
@@ -434,6 +442,7 @@ export const withProposal = {
         },
         {
           "id": "7",
+          "slug": "wuthering-heights",
           "title": "Wuthering Heights",
           "author": "Emily Brontë",
           "genre": "gothic",
@@ -447,192 +456,195 @@ export const withProposal = {
         "dystopia",
         "gothic",
         "romance",
-        "sci-fi"
+        "science"
       ]
     },
     "model": null,
     "summary": "3 results for \"gothic\"",
     "view": {
-      "type": "Stack",
+      "type": "Scope",
       "props": {
-        "gap": 1,
-        "boundTo": "shell"
+        "page": "shell"
       },
       "children": [
         {
-          "type": "Row",
+          "type": "Stack",
           "props": {
-            "boundTo": "shell"
+            "gap": 1
           },
           "children": [
             {
-              "type": "Text",
-              "props": {
-                "tone": "bold",
-                "boundTo": "shell"
-              },
+              "type": "Row",
+              "props": {},
               "children": [
-                "Bookshop"
+                {
+                  "type": "Text",
+                  "props": {
+                    "tone": "bold"
+                  },
+                  "children": [
+                    "Bookshop"
+                  ]
+                },
+                {
+                  "type": "Badge",
+                  "props": {},
+                  "children": [
+                    "cart: 1"
+                  ]
+                }
               ]
             },
             {
-              "type": "Badge",
+              "type": "Input",
               "props": {
-                "boundTo": "shell"
-              },
-              "children": [
-                "cart: 1"
-              ]
-            }
-          ]
-        },
-        {
-          "type": "Input",
-          "props": {
-            "param": "query",
-            "label": "Search",
-            "placeholder": "title, author or genre",
-            "page": "search",
-            "boundTo": "shell",
-            "submit": {
-              "argv": [
-                "search",
-                "--query"
-              ],
-              "template": "{value}"
-            }
-          },
-          "children": []
-        },
-        {
-          "type": "Divider",
-          "props": {
-            "boundTo": "shell"
-          },
-          "children": []
-        },
-        {
-          "type": "Page",
-          "props": {
-            "title": "Results for \"gothic\"",
-            "subtitle": "3 book(s) · sorted by title · genre: all (adventure, classic, dystopia, gothic, romance, sci-fi)",
-            "boundTo": "search"
-          },
-          "children": [
-            {
-              "type": "Table",
-              "props": {
-                "columns": [
-                  {
-                    "key": "title",
-                    "label": "title",
-                    "align": "left"
-                  },
-                  {
-                    "key": "author",
-                    "label": "author",
-                    "align": "left"
-                  },
-                  {
-                    "key": "price",
-                    "label": "price",
-                    "align": "right"
-                  },
-                  {
-                    "key": "stock",
-                    "label": "",
-                    "align": "left"
-                  }
-                ],
-                "rows": [
-                  {
-                    "cells": [
-                      "Dracula",
-                      "Bram Stoker",
-                      "£8.25",
-                      ""
-                    ],
-                    "command": [
-                      "open",
-                      "1"
-                    ]
-                  },
-                  {
-                    "cells": [
-                      "Frankenstein",
-                      "Mary Shelley",
-                      "£6.99",
-                      ""
-                    ],
-                    "command": [
-                      "open",
-                      "2"
-                    ]
-                  },
-                  {
-                    "cells": [
-                      "Wuthering Heights",
-                      "Emily Brontë",
-                      "£7.25",
-                      ""
-                    ],
-                    "command": [
-                      "open",
-                      "3"
-                    ]
-                  }
-                ],
-                "rowIntent": "open",
-                "empty": "No books match.",
-                "boundTo": "search"
+                "param": "query",
+                "label": "Search",
+                "placeholder": "title, author or genre",
+                "page": "search",
+                "submit": {
+                  "argv": [
+                    "search",
+                    "--query"
+                  ],
+                  "template": "{value}"
+                }
               },
               "children": []
             },
             {
-              "type": "Row",
+              "type": "Divider",
+              "props": {},
+              "children": []
+            },
+            {
+              "type": "Scope",
               "props": {
-                "boundTo": "search"
+                "page": "search"
               },
               "children": [
                 {
-                  "type": "Button",
+                  "type": "Page",
                   "props": {
-                    "intent": "prev",
-                    "label": "Previous",
-                    "hotkey": "p",
-                    "boundTo": "search",
-                    "command": [
-                      "prev"
-                    ],
-                    "disabled": true,
-                    "reason": "already on the first page"
-                  },
-                  "children": []
-                },
-                {
-                  "type": "Text",
-                  "props": {
-                    "tone": "dim",
-                    "boundTo": "search"
+                    "title": "Results for \"gothic\"",
+                    "subtitle": "3 book(s) · sorted by title · genre: all (adventure, classic, dystopia, gothic, romance, science)"
                   },
                   "children": [
-                    "page 1 of 1"
+                    {
+                      "type": "Table",
+                      "props": {
+                        "columns": [
+                          {
+                            "key": "title",
+                            "label": "title",
+                            "align": "left"
+                          },
+                          {
+                            "key": "author",
+                            "label": "author",
+                            "align": "left"
+                          },
+                          {
+                            "key": "price",
+                            "label": "price",
+                            "align": "right"
+                          },
+                          {
+                            "key": "stock",
+                            "label": "",
+                            "align": "left"
+                          }
+                        ],
+                        "rows": [
+                          {
+                            "cells": [
+                              "Dracula",
+                              "Bram Stoker",
+                              "£8.25",
+                              ""
+                            ],
+                            "command": [
+                              "open",
+                              "1"
+                            ]
+                          },
+                          {
+                            "cells": [
+                              "Frankenstein",
+                              "Mary Shelley",
+                              "£6.99",
+                              ""
+                            ],
+                            "command": [
+                              "open",
+                              "2"
+                            ]
+                          },
+                          {
+                            "cells": [
+                              "Wuthering Heights",
+                              "Emily Brontë",
+                              "£7.25",
+                              ""
+                            ],
+                            "command": [
+                              "open",
+                              "3"
+                            ]
+                          }
+                        ],
+                        "rowIntent": "open",
+                        "empty": "No books match."
+                      },
+                      "children": []
+                    },
+                    {
+                      "type": "Row",
+                      "props": {},
+                      "children": [
+                        {
+                          "type": "Button",
+                          "props": {
+                            "intent": "prev",
+                            "label": "Previous",
+                            "hotkey": "p",
+                            "command": [
+                              "prev"
+                            ],
+                            "disabled": true,
+                            "reason": "already on the first page"
+                          },
+                          "children": []
+                        },
+                        {
+                          "type": "Text",
+                          "props": {
+                            "tone": "dim"
+                          },
+                          "children": [
+                            "page ",
+                            "1",
+                            " of ",
+                            "1"
+                          ]
+                        },
+                        {
+                          "type": "Button",
+                          "props": {
+                            "intent": "next",
+                            "label": "Next",
+                            "hotkey": "n",
+                            "command": [
+                              "next"
+                            ],
+                            "disabled": true,
+                            "reason": "already on the last page"
+                          },
+                          "children": []
+                        }
+                      ]
+                    }
                   ]
-                },
-                {
-                  "type": "Button",
-                  "props": {
-                    "intent": "next",
-                    "label": "Next",
-                    "hotkey": "n",
-                    "boundTo": "search",
-                    "command": [
-                      "next"
-                    ],
-                    "disabled": true,
-                    "reason": "already on the last page"
-                  },
-                  "children": []
                 }
               ]
             }
@@ -640,7 +652,7 @@ export const withProposal = {
         }
       ]
     },
-    "text": "Bookshop  [cart: 1]\n\nSearch: title, author or genre▏ (search --query …)\n\n────────────────────────────────────────────────\n\nResults for \"gothic\"\n3 book(s) · sorted by title · genre: all (adventure, classic, dystopia, gothic, romance, sci-fi)\n\n   title              author        price\n1. Dracula            Bram Stoker   £8.25\n2. Frankenstein       Mary Shelley  £6.99\n3. Wuthering Heights  Emily Brontë  £7.25\n\n[p] Previous  page 1 of 1  [n] Next\n\nopen <row> · sort <by> · genre <name>",
+    "text": "Bookshop  [cart: 1]\n\nSearch: title, author or genre▏ (search --query …)\n\n────────────────────────────────────────────────\n\nResults for \"gothic\"\n3 book(s) · sorted by title · genre: all (adventure, classic, dystopia, gothic, romance, science)\n\n   title              author        price\n1. Dracula            Bram Stoker   £8.25\n2. Frankenstein       Mary Shelley  £6.99\n3. Wuthering Heights  Emily Brontë  £7.25\n\n[p] Previous  page 1 of 1  [n] Next\n\nopen <row> · sort <by> · genre <name>",
     "intents": [
       {
         "name": "open",
@@ -791,9 +803,9 @@ export const withProposal = {
   "pending": [
     {
       "id": 5,
-      "at": "2026-10-20T16:46:58.940Z",
+      "at": "2026-10-20T17:31:01.183Z",
       "actor": "agent",
-      "sid": "ad8890ad",
+      "sid": "41914a7c",
       "kind": "propose",
       "page": "cart",
       "intent": "checkout",
@@ -811,159 +823,264 @@ export const open = {
   "message": null,
   "result": null,
   "screen": {
-    "page": "book",
-    "href": "/books/5",
+    "page": "details",
+    "href": "/books/gothic/frankenstein",
     "title": "Frankenstein",
     "status": "ok",
     "params": {
-      "id": "5"
-    },
-    "data": {
-      "id": "5",
-      "title": "Frankenstein",
-      "author": "Mary Shelley",
       "genre": "gothic",
-      "price": 6.99,
-      "stock": 9
+      "slug": "frankenstein"
     },
-    "model": {
-      "inStock": true,
-      "lowStock": false
-    },
+    "data": null,
+    "model": null,
     "summary": "Frankenstein, £6.99",
     "view": {
-      "type": "Stack",
+      "type": "Scope",
       "props": {
-        "gap": 1,
-        "boundTo": "shell"
+        "page": "shell"
       },
       "children": [
         {
-          "type": "Row",
+          "type": "Stack",
           "props": {
-            "boundTo": "shell"
+            "gap": 1
           },
           "children": [
             {
-              "type": "Text",
-              "props": {
-                "tone": "bold",
-                "boundTo": "shell"
-              },
+              "type": "Row",
+              "props": {},
               "children": [
-                "Bookshop"
+                {
+                  "type": "Text",
+                  "props": {
+                    "tone": "bold"
+                  },
+                  "children": [
+                    "Bookshop"
+                  ]
+                },
+                {
+                  "type": "Badge",
+                  "props": {},
+                  "children": [
+                    "cart: 1"
+                  ]
+                }
               ]
             },
             {
-              "type": "Badge",
+              "type": "Input",
               "props": {
-                "boundTo": "shell"
-              },
-              "children": [
-                "cart: 1"
-              ]
-            }
-          ]
-        },
-        {
-          "type": "Input",
-          "props": {
-            "param": "query",
-            "label": "Search",
-            "placeholder": "title, author or genre",
-            "page": "search",
-            "boundTo": "shell",
-            "submit": {
-              "argv": [
-                "search",
-                "--query"
-              ],
-              "template": "{value}"
-            }
-          },
-          "children": []
-        },
-        {
-          "type": "Divider",
-          "props": {
-            "boundTo": "shell"
-          },
-          "children": []
-        },
-        {
-          "type": "Page",
-          "props": {
-            "title": "Frankenstein",
-            "subtitle": "by Mary Shelley",
-            "boundTo": "book"
-          },
-          "children": [
-            {
-              "type": "KeyValue",
-              "props": {
-                "items": [
-                  [
-                    "Genre",
-                    "gothic"
+                "param": "query",
+                "label": "Search",
+                "placeholder": "title, author or genre",
+                "page": "search",
+                "submit": {
+                  "argv": [
+                    "search",
+                    "--query"
                   ],
-                  [
-                    "Price",
-                    "£6.99"
-                  ],
-                  [
-                    "Stock",
-                    "9"
-                  ]
-                ],
-                "boundTo": "book"
+                  "template": "{value}"
+                }
               },
               "children": []
             },
             {
-              "type": "Row",
+              "type": "Divider",
+              "props": {},
+              "children": []
+            },
+            {
+              "type": "Scope",
               "props": {
-                "boundTo": "book"
+                "page": "shelf"
               },
               "children": [
                 {
-                  "type": "Button",
+                  "type": "Page",
                   "props": {
-                    "intent": "add",
-                    "label": "Add to cart",
-                    "hotkey": "a",
-                    "boundTo": "book",
-                    "command": [
-                      "add"
-                    ]
-                  },
-                  "children": []
-                },
-                {
-                  "type": "Button",
-                  "props": {
-                    "intent": "more",
-                    "label": "More gothic",
-                    "hotkey": "m",
-                    "boundTo": "book",
-                    "command": [
-                      "more"
-                    ]
-                  },
-                  "children": []
-                },
-                {
-                  "type": "Link",
-                  "props": {
-                    "href": "/search",
-                    "page": "search",
-                    "boundTo": "book",
-                    "command": [
-                      "go",
-                      "/search"
-                    ]
+                    "title": "Shelf: gothic",
+                    "subtitle": "3 books"
                   },
                   "children": [
-                    "All books"
+                    {
+                      "type": "Table",
+                      "props": {
+                        "columns": [
+                          {
+                            "key": "title",
+                            "label": "title",
+                            "align": "left"
+                          },
+                          {
+                            "key": "author",
+                            "label": "author",
+                            "align": "left"
+                          },
+                          {
+                            "key": "price",
+                            "label": "price",
+                            "align": "right"
+                          }
+                        ],
+                        "rows": [
+                          {
+                            "cells": [
+                              "Dracula",
+                              "Bram Stoker",
+                              "£8.25"
+                            ],
+                            "command": [
+                              "open",
+                              "1"
+                            ]
+                          },
+                          {
+                            "cells": [
+                              "Frankenstein",
+                              "Mary Shelley",
+                              "£6.99"
+                            ],
+                            "command": [
+                              "open",
+                              "2"
+                            ]
+                          },
+                          {
+                            "cells": [
+                              "Wuthering Heights",
+                              "Emily Brontë",
+                              "£7.25"
+                            ],
+                            "command": [
+                              "open",
+                              "3"
+                            ]
+                          }
+                        ],
+                        "rowIntent": "open"
+                      },
+                      "children": []
+                    },
+                    {
+                      "type": "Scope",
+                      "props": {
+                        "page": "book"
+                      },
+                      "children": [
+                        {
+                          "type": "Section",
+                          "props": {
+                            "title": "Frankenstein"
+                          },
+                          "children": [
+                            {
+                              "type": "Row",
+                              "props": {},
+                              "children": [
+                                {
+                                  "type": "Text",
+                                  "props": {
+                                    "tone": "dim"
+                                  },
+                                  "children": [
+                                    "by ",
+                                    "Mary Shelley",
+                                    " · ",
+                                    "£6.99"
+                                  ]
+                                }
+                              ]
+                            },
+                            {
+                              "type": "Row",
+                              "props": {},
+                              "children": [
+                                {
+                                  "type": "Button",
+                                  "props": {
+                                    "intent": "add",
+                                    "label": "Add to cart",
+                                    "hotkey": "a",
+                                    "command": [
+                                      "add"
+                                    ]
+                                  },
+                                  "children": []
+                                },
+                                {
+                                  "type": "Button",
+                                  "props": {
+                                    "intent": "close",
+                                    "label": "Close",
+                                    "hotkey": "x",
+                                    "command": [
+                                      "close"
+                                    ]
+                                  },
+                                  "children": []
+                                }
+                              ]
+                            },
+                            {
+                              "type": "Tabs",
+                              "props": {
+                                "tabs": [
+                                  {
+                                    "key": "details",
+                                    "label": "Details",
+                                    "active": true,
+                                    "command": [
+                                      "tab",
+                                      "details"
+                                    ]
+                                  },
+                                  {
+                                    "key": "reviews",
+                                    "label": "Reviews",
+                                    "active": false,
+                                    "command": [
+                                      "tab",
+                                      "reviews"
+                                    ]
+                                  }
+                                ]
+                              },
+                              "children": [
+                                {
+                                  "type": "Scope",
+                                  "props": {
+                                    "page": "details"
+                                  },
+                                  "children": [
+                                    {
+                                      "type": "KeyValue",
+                                      "props": {
+                                        "items": [
+                                          [
+                                            "Genre",
+                                            "gothic"
+                                          ],
+                                          [
+                                            "Price",
+                                            "£6.99"
+                                          ],
+                                          [
+                                            "Stock",
+                                            "9"
+                                          ]
+                                        ]
+                                      },
+                                      "children": []
+                                    }
+                                  ]
+                                }
+                              ]
+                            }
+                          ]
+                        }
+                      ]
+                    }
                   ]
                 }
               ]
@@ -972,7 +1089,7 @@ export const open = {
         }
       ]
     },
-    "text": "Bookshop  [cart: 1]\n\nSearch: title, author or genre▏ (search --query …)\n\n────────────────────────────────────────────────\n\nFrankenstein\nby Mary Shelley\n\nGenre  gothic\nPrice  £6.99\nStock  9\n\n[a] Add to cart  [m] More gothic  All books\n\nadd [qty] · more",
+    "text": "Bookshop  [cart: 1]\n\nSearch: title, author or genre▏ (search --query …)\n\n────────────────────────────────────────────────\n\nShelf: gothic\n3 books\n\n   title              author        price\n1. Dracula            Bram Stoker   £8.25\n2. Frankenstein       Mary Shelley  £6.99\n3. Wuthering Heights  Emily Brontë  £7.25\n\nFrankenstein\nby Mary Shelley · £6.99\n[a] Add to cart  [x] Close\n[1 Details]  2 Reviews \n────────────────────────────────────────────────\nGenre  gothic\nPrice  £6.99\nStock  9\n\nadd [qty] · close · tab <name> · open <row>",
     "intents": [
       {
         "name": "add",
@@ -997,11 +1114,51 @@ export const open = {
         "available": true
       },
       {
-        "name": "more",
+        "name": "close",
         "page": "book",
-        "usage": "more",
-        "description": "more books in this genre",
+        "usage": "close",
+        "description": "back to the shelf",
         "kind": "navigate",
+        "available": true
+      },
+      {
+        "name": "tab",
+        "page": "book",
+        "usage": "tab <name>",
+        "description": "switch tab: details, reviews",
+        "kind": "navigate",
+        "args": {
+          "type": "object",
+          "required": [
+            "name"
+          ],
+          "properties": {
+            "name": {
+              "description": "details | reviews",
+              "type": "string"
+            }
+          }
+        },
+        "available": true
+      },
+      {
+        "name": "open",
+        "page": "shelf",
+        "usage": "open <row>",
+        "description": "open the nth book on this shelf",
+        "kind": "navigate",
+        "args": {
+          "type": "object",
+          "required": [
+            "row"
+          ],
+          "properties": {
+            "row": {
+              "minimum": 1,
+              "type": "integer"
+            }
+          }
+        },
         "available": true
       }
     ],
@@ -1018,6 +1175,30 @@ export const open = {
         }
       },
       {
+        "kind": "row",
+        "label": "Dracula · Bram Stoker · £8.25",
+        "command": [
+          "open",
+          "1"
+        ]
+      },
+      {
+        "kind": "row",
+        "label": "Frankenstein · Mary Shelley · £6.99",
+        "command": [
+          "open",
+          "2"
+        ]
+      },
+      {
+        "kind": "row",
+        "label": "Wuthering Heights · Emily Brontë · £7.25",
+        "command": [
+          "open",
+          "3"
+        ]
+      },
+      {
         "kind": "button",
         "label": "Add to cart",
         "command": [
@@ -1026,17 +1207,25 @@ export const open = {
       },
       {
         "kind": "button",
-        "label": "More gothic",
+        "label": "Close",
         "command": [
-          "more"
+          "close"
         ]
       },
       {
-        "kind": "link",
-        "label": "All books",
+        "kind": "tab",
+        "label": "Details (active)",
         "command": [
-          "go",
-          "/search"
+          "tab",
+          "details"
+        ]
+      },
+      {
+        "kind": "tab",
+        "label": "Reviews",
+        "command": [
+          "tab",
+          "reviews"
         ]
       }
     ]
@@ -1044,9 +1233,9 @@ export const open = {
   "pending": [
     {
       "id": 5,
-      "at": "2026-10-20T16:46:58.940Z",
+      "at": "2026-10-20T17:31:01.183Z",
       "actor": "agent",
-      "sid": "ad8890ad",
+      "sid": "41914a7c",
       "kind": "propose",
       "page": "cart",
       "intent": "checkout",
@@ -1061,13 +1250,13 @@ export const logTail = {
   "ok": true,
   "actor": "user",
   "command": "log",
-  "message": "#5 16:46:58 agent  ⚑ proposes order.place (checkout)",
+  "message": "#5 17:31:01 agent  ⚑ proposes order.place (checkout)",
   "result": [
     {
       "id": 5,
-      "at": "2026-10-20T16:46:58.940Z",
+      "at": "2026-10-20T17:31:01.183Z",
       "actor": "agent",
-      "sid": "ad8890ad",
+      "sid": "41914a7c",
       "kind": "propose",
       "page": "cart",
       "intent": "checkout",
@@ -1078,9 +1267,9 @@ export const logTail = {
   "pending": [
     {
       "id": 5,
-      "at": "2026-10-20T16:46:58.940Z",
+      "at": "2026-10-20T17:31:01.183Z",
       "actor": "agent",
-      "sid": "ad8890ad",
+      "sid": "41914a7c",
       "kind": "propose",
       "page": "cart",
       "intent": "checkout",
@@ -1095,59 +1284,60 @@ export const logSince = {
   "ok": true,
   "actor": "user",
   "command": "log",
-  "message": "#2 16:46:58 agent  → book {\"id\":\"4\"} · Jane Eyre, £7.50\n#3 16:46:58 agent  ✓ cart.add {\"bookId\":\"4\",\"qty\":1} (add) · added 1 × Jane Eyre\n#4 16:46:58 agent  → cart · 1 item(s), £11.49\n#5 16:46:58 agent  ⚑ proposes order.place (checkout)",
+  "message": "#2 17:31:00 agent  → details {\"genre\":\"gothic\",\"slug\":\"dracula\"} · Dracula, £8.25\n#3 17:31:00 agent  ✓ cart.add {\"bookId\":\"6\",\"qty\":1} (add) · added 1 × Dracula\n#4 17:31:00 agent  → cart · 1 item(s), £12.24\n#5 17:31:01 agent  ⚑ proposes order.place (checkout)",
   "result": [
     {
       "id": 2,
-      "at": "2026-10-20T16:46:58.444Z",
+      "at": "2026-10-20T17:31:00.566Z",
       "actor": "agent",
-      "sid": "da3c1d34",
+      "sid": "d84a9283",
       "kind": "visit",
-      "page": "book",
+      "page": "details",
       "params": {
-        "id": "4"
+        "genre": "gothic",
+        "slug": "dracula"
       },
-      "href": "/books/4",
+      "href": "/books/gothic/dracula",
       "nav": "PUSH",
-      "note": "Jane Eyre, £7.50"
+      "note": "Dracula, £8.25"
     },
     {
       "id": 3,
-      "at": "2026-10-20T16:46:58.607Z",
+      "at": "2026-10-20T17:31:00.780Z",
       "actor": "agent",
-      "sid": "d22fe356",
+      "sid": "bdc0d95c",
       "kind": "apply",
       "page": "book",
       "intent": "add",
       "action": "cart.add",
       "input": {
-        "bookId": "4",
+        "bookId": "6",
         "qty": 1
       },
       "result": {
-        "bookId": "4",
-        "title": "Jane Eyre",
+        "bookId": "6",
+        "title": "Dracula",
         "qty": 1
       },
-      "note": "added 1 × Jane Eyre"
+      "note": "added 1 × Dracula"
     },
     {
       "id": 4,
-      "at": "2026-10-20T16:46:58.783Z",
+      "at": "2026-10-20T17:31:00.976Z",
       "actor": "agent",
-      "sid": "bc2cadf3",
+      "sid": "77b63e92",
       "kind": "visit",
       "page": "cart",
       "params": {},
       "href": "/cart",
       "nav": "PUSH",
-      "note": "1 item(s), £11.49"
+      "note": "1 item(s), £12.24"
     },
     {
       "id": 5,
-      "at": "2026-10-20T16:46:58.940Z",
+      "at": "2026-10-20T17:31:01.183Z",
       "actor": "agent",
-      "sid": "ad8890ad",
+      "sid": "41914a7c",
       "kind": "propose",
       "page": "cart",
       "intent": "checkout",
@@ -1158,9 +1348,9 @@ export const logSince = {
   "pending": [
     {
       "id": 5,
-      "at": "2026-10-20T16:46:58.940Z",
+      "at": "2026-10-20T17:31:01.183Z",
       "actor": "agent",
-      "sid": "ad8890ad",
+      "sid": "41914a7c",
       "kind": "propose",
       "page": "cart",
       "intent": "checkout",
@@ -1175,13 +1365,13 @@ export const logUser = {
   "ok": true,
   "actor": "user",
   "command": "log",
-  "message": "#1 16:46:58 user   → search {\"query\":\"gothic\",\"sort\":\"title\",\"page\":1} · 3 results for \"gothic\"\n#6 16:46:59 user   → book {\"id\":\"5\"} (open) · Frankenstein, £6.99",
+  "message": "#1 17:31:00 user   → search {\"query\":\"gothic\",\"sort\":\"title\",\"page\":1} · 3 results for \"gothic\"\n#6 17:31:02 user   → details {\"genre\":\"gothic\",\"slug\":\"frankenstein\"} (open) · Frankenstein, £6.99",
   "result": [
     {
       "id": 1,
-      "at": "2026-10-20T16:46:58.254Z",
+      "at": "2026-10-20T17:31:00.350Z",
       "actor": "user",
-      "sid": "5879abef",
+      "sid": "132d9624",
       "kind": "visit",
       "page": "search",
       "params": {
@@ -1195,15 +1385,16 @@ export const logUser = {
     },
     {
       "id": 6,
-      "at": "2026-10-20T16:46:59.685Z",
+      "at": "2026-10-20T17:31:02.103Z",
       "actor": "user",
-      "sid": "29730239",
+      "sid": "8fc9d8d6",
       "kind": "visit",
-      "page": "book",
+      "page": "details",
       "params": {
-        "id": "5"
+        "genre": "gothic",
+        "slug": "frankenstein"
       },
-      "href": "/books/5",
+      "href": "/books/gothic/frankenstein",
       "nav": "PUSH",
       "intent": "open",
       "note": "Frankenstein, £6.99"
@@ -1212,9 +1403,439 @@ export const logUser = {
   "pending": [
     {
       "id": 5,
-      "at": "2026-10-20T16:46:58.940Z",
+      "at": "2026-10-20T17:31:01.183Z",
       "actor": "agent",
-      "sid": "ad8890ad",
+      "sid": "41914a7c",
+      "kind": "propose",
+      "page": "cart",
+      "intent": "checkout",
+      "action": "order.place",
+      "input": {}
+    }
+  ],
+  "error": null
+} as const
+export const book = {
+  "v": 1,
+  "ok": true,
+  "actor": "user",
+  "command": "book",
+  "message": null,
+  "result": null,
+  "screen": {
+    "page": "details",
+    "href": "/books/gothic/frankenstein",
+    "title": "Frankenstein",
+    "status": "ok",
+    "params": {
+      "genre": "gothic",
+      "slug": "frankenstein"
+    },
+    "data": null,
+    "model": null,
+    "summary": "Frankenstein, £6.99",
+    "view": {
+      "type": "Scope",
+      "props": {
+        "page": "shell"
+      },
+      "children": [
+        {
+          "type": "Stack",
+          "props": {
+            "gap": 1
+          },
+          "children": [
+            {
+              "type": "Row",
+              "props": {},
+              "children": [
+                {
+                  "type": "Text",
+                  "props": {
+                    "tone": "bold"
+                  },
+                  "children": [
+                    "Bookshop"
+                  ]
+                },
+                {
+                  "type": "Badge",
+                  "props": {},
+                  "children": [
+                    "cart: 1"
+                  ]
+                }
+              ]
+            },
+            {
+              "type": "Input",
+              "props": {
+                "param": "query",
+                "label": "Search",
+                "placeholder": "title, author or genre",
+                "page": "search",
+                "submit": {
+                  "argv": [
+                    "search",
+                    "--query"
+                  ],
+                  "template": "{value}"
+                }
+              },
+              "children": []
+            },
+            {
+              "type": "Divider",
+              "props": {},
+              "children": []
+            },
+            {
+              "type": "Scope",
+              "props": {
+                "page": "shelf"
+              },
+              "children": [
+                {
+                  "type": "Page",
+                  "props": {
+                    "title": "Shelf: gothic",
+                    "subtitle": "3 books"
+                  },
+                  "children": [
+                    {
+                      "type": "Table",
+                      "props": {
+                        "columns": [
+                          {
+                            "key": "title",
+                            "label": "title",
+                            "align": "left"
+                          },
+                          {
+                            "key": "author",
+                            "label": "author",
+                            "align": "left"
+                          },
+                          {
+                            "key": "price",
+                            "label": "price",
+                            "align": "right"
+                          }
+                        ],
+                        "rows": [
+                          {
+                            "cells": [
+                              "Dracula",
+                              "Bram Stoker",
+                              "£8.25"
+                            ],
+                            "command": [
+                              "open",
+                              "1"
+                            ]
+                          },
+                          {
+                            "cells": [
+                              "Frankenstein",
+                              "Mary Shelley",
+                              "£6.99"
+                            ],
+                            "command": [
+                              "open",
+                              "2"
+                            ]
+                          },
+                          {
+                            "cells": [
+                              "Wuthering Heights",
+                              "Emily Brontë",
+                              "£7.25"
+                            ],
+                            "command": [
+                              "open",
+                              "3"
+                            ]
+                          }
+                        ],
+                        "rowIntent": "open"
+                      },
+                      "children": []
+                    },
+                    {
+                      "type": "Scope",
+                      "props": {
+                        "page": "book"
+                      },
+                      "children": [
+                        {
+                          "type": "Section",
+                          "props": {
+                            "title": "Frankenstein"
+                          },
+                          "children": [
+                            {
+                              "type": "Row",
+                              "props": {},
+                              "children": [
+                                {
+                                  "type": "Text",
+                                  "props": {
+                                    "tone": "dim"
+                                  },
+                                  "children": [
+                                    "by ",
+                                    "Mary Shelley",
+                                    " · ",
+                                    "£6.99"
+                                  ]
+                                }
+                              ]
+                            },
+                            {
+                              "type": "Row",
+                              "props": {},
+                              "children": [
+                                {
+                                  "type": "Button",
+                                  "props": {
+                                    "intent": "add",
+                                    "label": "Add to cart",
+                                    "hotkey": "a",
+                                    "command": [
+                                      "add"
+                                    ]
+                                  },
+                                  "children": []
+                                },
+                                {
+                                  "type": "Button",
+                                  "props": {
+                                    "intent": "close",
+                                    "label": "Close",
+                                    "hotkey": "x",
+                                    "command": [
+                                      "close"
+                                    ]
+                                  },
+                                  "children": []
+                                }
+                              ]
+                            },
+                            {
+                              "type": "Tabs",
+                              "props": {
+                                "tabs": [
+                                  {
+                                    "key": "details",
+                                    "label": "Details",
+                                    "active": true,
+                                    "command": [
+                                      "tab",
+                                      "details"
+                                    ]
+                                  },
+                                  {
+                                    "key": "reviews",
+                                    "label": "Reviews",
+                                    "active": false,
+                                    "command": [
+                                      "tab",
+                                      "reviews"
+                                    ]
+                                  }
+                                ]
+                              },
+                              "children": [
+                                {
+                                  "type": "Scope",
+                                  "props": {
+                                    "page": "details"
+                                  },
+                                  "children": [
+                                    {
+                                      "type": "KeyValue",
+                                      "props": {
+                                        "items": [
+                                          [
+                                            "Genre",
+                                            "gothic"
+                                          ],
+                                          [
+                                            "Price",
+                                            "£6.99"
+                                          ],
+                                          [
+                                            "Stock",
+                                            "9"
+                                          ]
+                                        ]
+                                      },
+                                      "children": []
+                                    }
+                                  ]
+                                }
+                              ]
+                            }
+                          ]
+                        }
+                      ]
+                    }
+                  ]
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    "text": "Bookshop  [cart: 1]\n\nSearch: title, author or genre▏ (search --query …)\n\n────────────────────────────────────────────────\n\nShelf: gothic\n3 books\n\n   title              author        price\n1. Dracula            Bram Stoker   £8.25\n2. Frankenstein       Mary Shelley  £6.99\n3. Wuthering Heights  Emily Brontë  £7.25\n\nFrankenstein\nby Mary Shelley · £6.99\n[a] Add to cart  [x] Close\n[1 Details]  2 Reviews \n────────────────────────────────────────────────\nGenre  gothic\nPrice  £6.99\nStock  9\n\nadd [qty] · close · tab <name> · open <row>",
+    "intents": [
+      {
+        "name": "add",
+        "page": "book",
+        "usage": "add [qty]",
+        "description": "add this book to the cart",
+        "kind": "action",
+        "action": "cart.add",
+        "args": {
+          "type": "object",
+          "required": [
+            "qty"
+          ],
+          "properties": {
+            "qty": {
+              "minimum": 1,
+              "default": 1,
+              "type": "integer"
+            }
+          }
+        },
+        "available": true
+      },
+      {
+        "name": "close",
+        "page": "book",
+        "usage": "close",
+        "description": "back to the shelf",
+        "kind": "navigate",
+        "available": true
+      },
+      {
+        "name": "tab",
+        "page": "book",
+        "usage": "tab <name>",
+        "description": "switch tab: details, reviews",
+        "kind": "navigate",
+        "args": {
+          "type": "object",
+          "required": [
+            "name"
+          ],
+          "properties": {
+            "name": {
+              "description": "details | reviews",
+              "type": "string"
+            }
+          }
+        },
+        "available": true
+      },
+      {
+        "name": "open",
+        "page": "shelf",
+        "usage": "open <row>",
+        "description": "open the nth book on this shelf",
+        "kind": "navigate",
+        "args": {
+          "type": "object",
+          "required": [
+            "row"
+          ],
+          "properties": {
+            "row": {
+              "minimum": 1,
+              "type": "integer"
+            }
+          }
+        },
+        "available": true
+      }
+    ],
+    "controls": [
+      {
+        "kind": "input",
+        "label": "Search",
+        "submit": {
+          "argv": [
+            "search",
+            "--query"
+          ],
+          "template": "{value}"
+        }
+      },
+      {
+        "kind": "row",
+        "label": "Dracula · Bram Stoker · £8.25",
+        "command": [
+          "open",
+          "1"
+        ]
+      },
+      {
+        "kind": "row",
+        "label": "Frankenstein · Mary Shelley · £6.99",
+        "command": [
+          "open",
+          "2"
+        ]
+      },
+      {
+        "kind": "row",
+        "label": "Wuthering Heights · Emily Brontë · £7.25",
+        "command": [
+          "open",
+          "3"
+        ]
+      },
+      {
+        "kind": "button",
+        "label": "Add to cart",
+        "command": [
+          "add"
+        ]
+      },
+      {
+        "kind": "button",
+        "label": "Close",
+        "command": [
+          "close"
+        ]
+      },
+      {
+        "kind": "tab",
+        "label": "Details (active)",
+        "command": [
+          "tab",
+          "details"
+        ]
+      },
+      {
+        "kind": "tab",
+        "label": "Reviews",
+        "command": [
+          "tab",
+          "reviews"
+        ]
+      }
+    ]
+  },
+  "pending": [
+    {
+      "id": 5,
+      "at": "2026-10-20T17:31:01.183Z",
+      "actor": "agent",
+      "sid": "41914a7c",
       "kind": "propose",
       "page": "cart",
       "intent": "checkout",

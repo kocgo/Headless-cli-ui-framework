@@ -14,10 +14,16 @@
     "@sinclair/typebox": "^0.34.52",
     "@tanstack/history": "^1.162.5",
     "@tanstack/query-core": "^5.104.5",
-    "@tanstack/router-core": "^1.171.38"
+    "@tanstack/react-router": "^1.170.45",
+    "@tanstack/router-core": "^1.171.38",
+    "react": "^18.3.1",
+    "react-dom": "^18.3.1",
+    "react-reconciler": "^0.29.2"
   },
   "devDependencies": {
     "@types/node": "^26.6.5",
+    "@types/react": "^18.3.31",
+    "@types/react-reconciler": "^0.28.9",
     "esbuild": "^0.28.2",
     "tsx": "^4.23.15",
     "typescript": "^7.0.2"
@@ -25,9 +31,5 @@
   "type": "module",
   "bin": {
     "bookshop": "src/bookshop/main.ts"
-  },
-  "imports": {
-    "#cui/jsx-runtime": "./src/framework/jsx-runtime.ts",
-    "#cui/jsx-dev-runtime": "./src/framework/jsx-runtime.ts"
   }
 }

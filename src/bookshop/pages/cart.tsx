@@ -4,7 +4,7 @@ import { cart as cartActions, order } from '../actions.js'
 import type { CartLine } from '../api.js'
 import { checkoutBlockers, gbp, priceCart } from '../domain/cart.js'
 import { page } from '../kit.js'
-import { book } from './book.js'
+import { book } from './shelf.js'
 
 export const cart = page('cart', {
   path: '/cart',
@@ -39,7 +39,7 @@ export const cart = page('cart', {
     <Page title="Cart" subtitle={model.items ? `${model.items} item(s)` : undefined}>
       <Table
         rows={data}
-        rowLink={(l) => book.link({ id: l.bookId })}
+        rowLink={(l) => book.link({ genre: l.genre, slug: l.slug })}
         empty="Your cart is empty."
         columns={[
           col<CartLine, 'title'>('title'),
@@ -51,7 +51,9 @@ export const cart = page('cart', {
         <KeyValue items={{ Subtotal: gbp(model.subtotal), Shipping: model.shipping ? gbp(model.shipping) : 'free', Total: gbp(model.total) }} />
       )}
       {model.toFreeShipping > 0 && <Text tone="dim">Add {gbp(model.toFreeShipping)} more for free shipping.</Text>}
-      {model.blockers.map((b) => <Text tone="warning">{b}</Text>)}
+      {model.blockers.map((b) => (
+        <Text key={b} tone="warning">{b}</Text>
+      ))}
       <Button intent="checkout" label="Checkout" hotkey="c" />
     </Page>
   ),

@@ -3,7 +3,7 @@ import { Button, Page, Row, Table, Text, col, type Href } from '../../framework/
 import type { Book } from '../api.js'
 import { gbp } from '../domain/cart.js'
 import { page } from '../kit.js'
-import { book } from './book.js'
+import { book } from './shelf.js'
 
 /**
  * `bookshop search --query 1984`
@@ -34,7 +34,7 @@ export const search = page('search', {
       to: ({ data, args }): Href => {
         const b = data.items[args.row - 1]
         if (!b) throw new Error(`there is no row ${args.row}`)
-        return book.link({ id: b.id })
+        return book.link({ genre: b.genre, slug: b.slug })
       },
     },
     next: {

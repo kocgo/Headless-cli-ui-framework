@@ -7,12 +7,12 @@
 import { randomUUID } from 'node:crypto'
 import { QueryClient } from '@tanstack/query-core'
 import type { App } from '../app.js'
-import type { AnyAction, AnyPage } from '../declare.js'
+import { positionalOf, type AnyAction, type AnyPage } from '../declare.js'
 import { EmptyObject, keysOf, parseInput, parseQuery, stringifyQuery } from '../schema.js'
 import { compileRouteTree, queryKeyOf, type RouterContext } from './compile.js'
 import { AppError } from './errors.js'
 import type { ActionLog, LogEntry, NavType } from './log.js'
-import { createHeadlessRouter } from './router.js'
+import { createRuntime } from './runtime.js'
 import { resolveScreen, type Screen } from './screen.js'
 
 export type DispatchResult =
@@ -48,7 +48,7 @@ export async function createSession(opts: SessionOptions) {
   const cursor = log.cursor(opts.cursorOf ?? actor)
   const rc: RouterContext = { queryClient, ctx }
 
-  const headless = createHeadlessRouter({
+  const runtime = await createRuntime({
     routeTree: compileRouteTree(app)(),
     initialEntries: cursor.entries,
     initialIndex: cursor.index,
@@ -56,7 +56,7 @@ export async function createSession(opts: SessionOptions) {
     externalSources: [(notify) => queryClient.getQueryCache().subscribe(notify)],
     routerOptions: { parseSearch: parseQuery, stringifySearch: stringifyQuery },
   })
-  const { router, history } = headless
+  const { router, history } = runtime
 
   // Serialise everything that touches the router: commands, sync, follow.
   let chain: Promise<unknown> = Promise.resolve()
@@ -67,15 +67,13 @@ export async function createSession(opts: SessionOptions) {
   }
 
   async function settle() {
-    await headless.settled()
+    await runtime.settled()
     while (queryClient.isFetching()) await new Promise((r) => setTimeout(r, 5))
-    await new Promise((r) => setImmediate(r))
+    await runtime.settled()
   }
-
-  await headless.start()
   await settle()
 
-  const screen = (): Screen => resolveScreen(router, queryClient, ctx)
+  const screen = (): Screen => resolveScreen(router, runtime.snapshot(), queryClient, ctx)
   let replaying = false
 
   function recordVisit(nav: NavType, intent?: string) {
@@ -107,7 +105,7 @@ export async function createSession(opts: SessionOptions) {
 
   /** `search --query 1984` → validate params, build the link, navigate. */
   async function goPage(page: AnyPage, positional: string[], flags: Record<string, string>) {
-    const keys = (page.def.positional as string[] | undefined) ?? []
+    const keys = positionalOf(page)
     const raw = argsToObject(keys, positional, flags)
     const unknown = Object.keys(raw).filter((k) => !(k in (page.params.properties ?? {})))
     if (unknown.length) throw new AppError('usage', `${page.name} has no param ${unknown.map((k) => `--${k}`).join(', ')}`, Object.keys(page.params.properties ?? {}).map((k) => `--${k}`))
@@ -277,8 +275,8 @@ export async function createSession(opts: SessionOptions) {
     get following() {
       return following
     },
-    onChange: headless.onChange,
-    dispose: headless.dispose,
+    onChange: runtime.onChange,
+    dispose: runtime.dispose,
   }
 }
 

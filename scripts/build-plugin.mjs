@@ -12,7 +12,7 @@ await build({
   target: 'node22',
   conditions: ['development'],
   jsx: 'automatic',
-  jsxImportSource: '#cui',
+  define: { 'process.env.NODE_ENV': '"production"' },
   legalComments: 'none',
   minify: true,
   keepNames: true,

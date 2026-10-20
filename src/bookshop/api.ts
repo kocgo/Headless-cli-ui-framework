@@ -4,8 +4,9 @@
  */
 import type { Db } from '../framework/index.js'
 
-export interface Book { id: string; title: string; author: string; genre: string; price: number; stock: number }
-export interface CartLine { bookId: string; title: string; price: number; qty: number; stock: number }
+export interface Book { id: string; slug: string; title: string; author: string; genre: string; price: number; stock: number }
+export interface Review { stars: number; text: string; at: string }
+export interface CartLine { bookId: string; slug: string; genre: string; title: string; price: number; qty: number; stock: number }
 export interface Account { name: string; email: string }
 export interface Order { id: number; at: string; total: number; items: CartLine[] }
 export type Sort = 'title' | 'price' | 'author'
@@ -24,21 +25,44 @@ const SEED: Array<[string, string, string, number, number]> = [
   ['Middlemarch', 'George Eliot', 'classic', 10.99, 3],
   ['War and Peace', 'Leo Tolstoy', 'classic', 12.5, 2],
   ['Crime and Punishment', 'Fyodor Dostoevsky', 'classic', 9.99, 6],
-  ['The Time Machine', 'H. G. Wells', 'sci-fi', 5.99, 11],
-  ['The War of the Worlds', 'H. G. Wells', 'sci-fi', 6.5, 9],
+  ['The Time Machine', 'H. G. Wells', 'science', 5.99, 11],
+  ['The War of the Worlds', 'H. G. Wells', 'science', 6.5, 9],
+  ['Twenty Thousand Leagues Under the Seas', 'Jules Verne', 'science', 7.99, 5],
   ['Animal Farm', 'George Orwell', 'dystopia', 5.99, 0],
+]
+
+export const slugify = (s: string) => s.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '')
+
+const REVIEWS: Array<[string, number, string, string]> = [
+  ['the-time-machine', 5, 'Still the template for every time-travel story.', '2026-03-02'],
+  ['the-time-machine', 3, 'Short, and the Eloi are a bit flat.', '2026-09-14'],
+  ['the-time-machine', 4, 'Read it in one sitting.', '2026-06-21'],
+  ['1984', 5, 'More relevant every year.', '2026-08-30'],
+  ['1984', 4, 'Bleak, brilliant, exhausting.', '2026-01-11'],
+  ['dracula', 4, 'The letters format still works.', '2026-07-07'],
+  ['frankenstein', 5, 'Nothing like the films.', '2026-05-19'],
 ]
 
 export function createApi(db: Db) {
   db.exec(`
-    CREATE TABLE IF NOT EXISTS books (id TEXT PRIMARY KEY, title TEXT, author TEXT, genre TEXT, price REAL, stock INTEGER);
+    CREATE TABLE IF NOT EXISTS books (id TEXT PRIMARY KEY, slug TEXT, title TEXT, author TEXT, genre TEXT, price REAL, stock INTEGER);
+    CREATE TABLE IF NOT EXISTS reviews (slug TEXT, stars INTEGER, text TEXT, at TEXT);
     CREATE TABLE IF NOT EXISTS cart (book_id TEXT PRIMARY KEY, qty INTEGER NOT NULL);
     CREATE TABLE IF NOT EXISTS account (id INTEGER PRIMARY KEY CHECK (id = 1), name TEXT, email TEXT);
     CREATE TABLE IF NOT EXISTS orders (id INTEGER PRIMARY KEY AUTOINCREMENT, at TEXT, total REAL, items TEXT);
   `)
+  // Databases from before slugs existed: add the column and fill it.
+  const cols = (db.prepare('PRAGMA table_info(books)').all() as Array<{ name: string }>).map((c) => c.name)
+  if (!cols.includes('slug')) {
+    db.exec('ALTER TABLE books ADD COLUMN slug TEXT')
+    for (const b of db.prepare('SELECT id, title FROM books').all() as Array<{ id: string; title: string }>)
+      db.prepare('UPDATE books SET slug = ? WHERE id = ?').run(slugify(b.title), b.id)
+  }
   if (!(db.prepare('SELECT COUNT(*) AS n FROM books').get() as { n: number }).n) {
-    const ins = db.prepare('INSERT INTO books VALUES (?, ?, ?, ?, ?, ?)')
-    SEED.forEach(([title, author, genre, price, stock], i) => ins.run(String(i + 1), title, author, genre, price, stock))
+    const ins = db.prepare('INSERT INTO books VALUES (?, ?, ?, ?, ?, ?, ?)')
+    SEED.forEach(([title, author, genre, price, stock], i) => ins.run(String(i + 1), slugify(title), title, author, genre, price, stock))
+    const rev = db.prepare('INSERT INTO reviews VALUES (?, ?, ?, ?)')
+    REVIEWS.forEach((r) => rev.run(...r))
     db.prepare("INSERT INTO account VALUES (1, 'Reader', 'reader@example.com')").run()
   }
   const tx = <T>(fn: () => T): T => {
@@ -55,7 +79,7 @@ export function createApi(db: Db) {
   const getBook = (id: string) => (db.prepare('SELECT * FROM books WHERE id = ?').get(id) as Book | undefined) ?? null
   const getCart = () =>
     db
-      .prepare('SELECT c.book_id AS bookId, b.title, b.price, c.qty, b.stock FROM cart c JOIN books b ON b.id = c.book_id ORDER BY b.title')
+      .prepare('SELECT c.book_id AS bookId, b.slug, b.genre, b.title, b.price, c.qty, b.stock FROM cart c JOIN books b ON b.id = c.book_id ORDER BY b.title')
       .all() as unknown as CartLine[]
 
   return {
@@ -81,6 +105,16 @@ export function createApi(db: Db) {
     },
     async getBook(id: string) {
       return getBook(id)
+    },
+    async getShelf(genre: string) {
+      return db.prepare('SELECT * FROM books WHERE genre = ? ORDER BY title').all(genre) as unknown as Book[]
+    },
+    async getBookBySlug(genre: string, slug: string) {
+      return (db.prepare('SELECT * FROM books WHERE genre = ? AND slug = ?').get(genre, slug) as Book | undefined) ?? null
+    },
+    async getReviews(slug: string, sort: 'top' | 'new') {
+      const order = sort === 'new' ? 'at DESC' : 'stars DESC, at DESC'
+      return db.prepare(`SELECT stars, text, at FROM reviews WHERE slug = ? ORDER BY ${order}`).all(slug) as unknown as Review[]
     },
     async getCart() {
       return getCart()

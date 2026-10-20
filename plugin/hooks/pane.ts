@@ -173,6 +173,30 @@ function draw($: EngineInterface, els: Elements, node: ViewNode, width: number, 
         onSubmit: (value: string) => run($, [...submit.argv, submit.template.replace('{value}', value)]),
       })
     }
+    case 'Tabs': {
+      // A tab bar (each tab runs `tab <name>`), then the active tab's view.
+      const tabs = p.tabs as Array<{ key: string; label: string; active: boolean; command: string[] }>
+      return Box({
+        flexDirection: 'column',
+        children: [
+          Box({
+            flexDirection: 'row',
+            columnGap: 2,
+            children: tabs.map((t, i) =>
+              Button({
+                key: 'tab-' + t.key,
+                label: t.label,
+                hotkey: String(i + 1),
+                plain: true,
+                dimColor: !t.active,
+                onPress: () => run($, t.command),
+              }),
+            ),
+          }),
+          ...kids(),
+        ],
+      })
+    }
     case 'Table': {
       const cols = p.columns as Array<{ label: string; align: string }>
       const rows = p.rows as Array<{ cells: string[]; command?: string[]; disabled?: boolean }>

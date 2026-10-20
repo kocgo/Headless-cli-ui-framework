@@ -19,8 +19,9 @@ The bookshop is a CLI, `bookshop`, on your PATH. The user uses the same app in a
 
 ## Commands
 
-- Pages, with params as flags: `bookshop --json search --query dune`, `bookshop --json book 4`, `bookshop --json cart`, `account`, `activity`
-- Intents on the current page: `open 2`, `next`, `prev`, `sort price`, `genre gothic`, `add 2`, `more`, `remove 1`, `checkout`, `email a@b.co`
+- Pages, with params as flags: `bookshop --json search --query dune`, `shelf science`, `book science the-time-machine`, `reviews science the-time-machine --sort new`, `cart`, `account`, `activity`
+- Pages nest: a book is shown inside its shelf (`/books/science/the-time-machine`), and has tabs (`details`, `reviews`). `screen.intents` includes the intents of every level, each with its `page`.
+- Intents on the current screen: `open 2`, `next`, `prev`, `sort price`, `genre gothic`, `add 2`, `close`, `tab reviews`, `remove 1`, `checkout`, `email a@b.co`
 - Anywhere: `go <href>`, `back`, `forward`, `set k=v`, `unset k`, `reload`, `show`, `do <action> --k v`, `pending`, `wait <id>`, `peek user`, `log [n]`
 
 ## Exit codes
@@ -30,8 +31,8 @@ The bookshop is a CLI, `bookshop`, on your PATH. The user uses the same app in a
 ## Example
 
 ```
-bookshop --json peek user             # user is on /books/5 (Frankenstein)
-bookshop --json book 5                # go there yourself
+bookshop --json peek user             # user is on /books/gothic/frankenstein
+bookshop --json book gothic frankenstein   # go there yourself
 bookshop --json add 2                 # result.status "applied"
 bookshop --json cart                  # screen.model.total, screen.model.blockers
 bookshop --json checkout              # exit 3: proposed #12

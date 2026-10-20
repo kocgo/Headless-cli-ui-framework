@@ -9,7 +9,7 @@ You declare pages, intents, views and actions once. From those declarations you 
 - a **shared activity log** that keeps actors in sync and records what each one did and found
 - a **pane in Claude Code**, shipped as a plugin, drawing the same views
 
-It runs on a headless [TanStack Router](https://tanstack.com/router) (`@tanstack/router-core`) with [TanStack Query](https://tanstack.com/query) (`@tanstack/query-core`) and [TypeBox](https://github.com/sinclairzx81/typebox) schemas. No React.
+It runs [`@tanstack/react-router`](https://tanstack.com/router) headless: real routes, real `<Outlet />`, `<Link>` and hooks, rendered by a small custom React renderer into a plain view tree instead of the DOM. Data goes through [TanStack Query](https://tanstack.com/query) (`@tanstack/query-core`); params, args and inputs are [TypeBox](https://github.com/sinclairzx81/typebox) schemas.
 
 ## Install the example as a Claude Code plugin
 
@@ -68,8 +68,43 @@ export const search = page('search', {
 | `data` | fetching | return `null` for "not found" |
 | `model` | business logic over the data | pure; part of the JSON, so the agent reads facts, not pixels |
 | `intents` | what you can do: `to` (navigate) or `do` (action) | `when` decides availability for the user and the agent at once |
-| `view` | presentation only | `Page`, `Section`, `Row`, `Stack`, `Text`, `Table`, `KeyValue`, `Badge`, `Link`, `Button`, `Input`, `Divider` |
+| `view` | presentation only, as React | `Page`, `Section`, `Row`, `Stack`, `Text`, `Table`, `KeyValue`, `Badge`, `Link`, `Button`, `Input`, `Divider`, `Tabs`, plus TanStack's `<Outlet />` |
 | `summary` | one line for the activity log | |
+
+### Nested routes, outlets and tabs
+
+Pages nest as real TanStack routes. A child inherits its parent's params, sees its state as `parent`, and renders in the parent's `<Outlet />`; a tab is a child that also appears in the parent's `<Tabs />` bar and gets a `tab <name>` intent.
+
+```tsx
+export const shelf = page('shelf', {
+  path: '/books/$genre',
+  params: Type.Object({ genre: Type.String() }),
+  data: ({ genre }, { api }) => api.getShelf(genre),
+  view: ({ data }) => (
+    <Page title="Shelf">
+      <Table rows={data} rowIntent="open" columns={[col('title')]} />
+      <Outlet />                                   {/* the selected book */}
+    </Page>
+  ),
+  intents: { open: { /* … */ } },
+})
+
+export const book = shelf.child('book', {         // /books/science/the-time-machine
+  path: '$slug',
+  params: Type.Object({ slug: Type.String() }),
+  data: ({ genre, slug }, { api }) => api.getBookBySlug(genre, slug),
+  view: ({ data }) => <Section title={data.title}><Tabs /></Section>,
+})
+
+export const details = book.tab('details', { index: true, view: ({ parent }) => <KeyValue items={{ Price: parent.data.price }} /> })
+export const reviews = book.tab('reviews', {     // /books/science/the-time-machine/reviews?sort=new
+  params: Type.Object({ sort: Type.Union([Type.Literal('top'), Type.Literal('new')], { default: 'top' }) }),
+  data: ({ slug, sort }, { api }) => api.getReviews(slug, sort),
+  view: ({ data }) => <Table rows={data} columns={[col('stars'), col('text')]} />,
+})
+```
+
+On the CLI: `shelf science`, then `open 1`, then `tab reviews`, then `sort new`. Or go straight there with `reviews science the-time-machine --sort new`. `screen.intents` lists the intents of every level (`reviews.sort`, `book.add`, `book.tab`, `shelf.open`).
 
 Domain rules live in plain modules (`src/bookshop/domain/`) that `model`, `when` and an action's `precheck` all call, so the screen and the write can't disagree.
 
@@ -114,10 +149,11 @@ Commands are looked up in this order: framework commands, then intents on the cu
 
 ```
 src/framework/            the framework
-  declare.ts              page(), layout(), action(), actions() — the authoring API
-  view.ts, jsx-runtime.ts the view primitives and a React-free JSX runtime
+  declare.ts              page(), layout(), child(), tab(), action(), actions() — the authoring API
+  view.tsx                the view primitives (React components emitting host elements)
+  react/renderer.ts       a react-reconciler renderer: React → plain view tree, no DOM
   app.ts                  defineApp(): validation and framework commands
-  engine/                 headless router, route compilation, screen resolution,
+  engine/                 react-router runtime, route compilation, screen resolution,
                           session (cursor, intents, dispatch, approvals, sync), activity log
   cli/                    command layer, JSON envelope, text renderer, interactive UI
 src/bookshop/             the example app: api, domain rules, actions, pages
@@ -145,8 +181,13 @@ claude --plugin-dir ./plugin                   # try the pane
 
 1. Under Node's `node` export condition, router-core hard-codes `isServer = true`, and `navigate()` never commits. The bundle bakes in the `development` condition; from source, run with `--conditions=development`.
 2. The router constructor reads `window?.origin`; the engine declares `window = undefined`.
-3. `createMemoryHistory` ignores `initialIndex: 0` (a truthiness check). The engine steps back manually.
-4. Headless, no query has observers, so invalidation uses `refetchType: 'all'`.
-5. URLs use plain query strings (`?query=1984`) with schema coercion, and omit default values, instead of TanStack's JSON-typed encoding.
+3. Scroll restoration calls the global `scrollTo` after every navigation; the engine makes it a no-op.
+4. The React adapter expects loading to have started before the first render; the engine calls `router.load()` first.
+5. `createMemoryHistory` ignores `initialIndex: 0` (a truthiness check). The engine steps back manually.
+6. Headless, no query has observers, so invalidation uses `refetchType: 'all'`.
+7. URLs use plain query strings (`?query=1984`) with schema coercion, and omit default values, instead of TanStack's JSON-typed encoding.
+8. A page component re-rendered mid-transition, after its route stopped matching, must render nothing (an `<Outlet />` there throws).
 
-Tested with router-core 1.171, query-core 5.104, TypeBox 0.34 and Claude Code 2.1.304.
+`CUI_DEBUG=1` prints any error a component throws inside TanStack's error boundaries.
+
+Tested with @tanstack/react-router 1.170 (router-core 1.171), React 18.3 with react-reconciler 0.29, query-core 5.104, TypeBox 0.34 and Claude Code 2.1.304. The spike that led here is in `spikes/react-router/`.

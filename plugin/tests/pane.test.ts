@@ -27,6 +27,7 @@ function setup(on: Parameters<Parameters<typeof test>[1]>[1], screens: { show: u
     const env =
       argv[0] === 'show' ? screens.show
       : argv[0] === 'open' ? fx.open
+      : argv[0] === 'tab' ? fx.book
       : argv[0] === 'approve' ? fx.search
       : argv[0] === 'log' && argv.includes('--actor') ? fx.logUser
       : argv[0] === 'log' && argv.includes('--since') ? fx.logSince
@@ -89,4 +90,18 @@ test("Claude's next prompt carries what the user did in the pane", async ($, on)
   await $.prompt.submit({ text: 'what am I looking at?' })
   expect(seen?.[0]).toContain('In the bookshop pane since your last turn, the user:')
   expect(seen?.[0]).toContain('opened search')
+})
+
+test('a book shows its tab bar inside the shelf, and a tab press runs `tab <name>`', async ($, on) => {
+  const calls = setup(on, { show: fx.book })
+  await $.session.start({ cwd: '/', surface: 'terminal', isInteractive: true })
+  await $.command.run({ command: 'shop', args: '' })
+
+  const ui = await $.ui.mount({ ...PANE, surface: 'terminal' })
+  // The shelf's table and the book (rendered in the shelf's <Outlet />) are both on screen.
+  expect(await ui.find({ type: 'Text', text: /Shelf: gothic/ })).toBeDefined()
+  expect(await ui.find({ type: 'Text', text: /^Frankenstein$/ })).toBeDefined()
+  await ui.press({ key: 'tab-reviews' })
+  expect(calls).toContainEqual(['tab', 'reviews'])
+  await ui.unmount()
 })

@@ -14,8 +14,7 @@
     ],
     "noEmit": true,
     "jsx": "react-jsx",
-    "jsxImportSource": "#cui",
-    "allowImportingTsExtensions": true
+    "jsxImportSource": "react"
   },
   "include": [
     "src"
