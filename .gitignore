@@ -6,3 +6,4 @@ node_modules/
 *.log
 demo-output/
 plugin/.claude-plugin/types/
+spikes/*/node_modules/

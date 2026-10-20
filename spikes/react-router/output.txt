@@ -1,0 +1,52 @@
+--- /books/science/the-time-machine/reviews?sort=new  (first render 103 ms, fetches: shelf science, book the-time-machine, reviews the-time-machine new)
+<Page title="Bookshop">
+  <Section title="Shelf: science">
+    <Rows>
+      <a className="active" href="/books/science/the-time-machine" data-status="active" aria-current="page">
+        "The Time Machine"
+      <a href="/books/science/war-of-the-worlds">
+        "The War of the Worlds"
+    <Section title="The Time Machine">
+      <Tabs>
+        <a href="/books/science/the-time-machine">
+          "Details"
+        <a className="active" href="/books/science/the-time-machine/reviews" data-status="active" aria-current="page">
+          "Reviews"
+      <Section title="Reviews (new)">
+        <Text>
+          "3★ Dated"
+        <Text>
+          "5★ Timeless"
+--- /books/science/the-time-machine  (fetches: none, cached)
+<Page title="Bookshop">
+  <Section title="Shelf: science">
+    <Rows>
+      <a className="active" href="/books/science/the-time-machine" data-status="active" aria-current="page">
+        "The Time Machine"
+      <a href="/books/science/war-of-the-worlds">
+        "The War of the Worlds"
+    <Section title="The Time Machine">
+      <Tabs>
+        <a className="active" href="/books/science/the-time-machine" data-status="active" aria-current="page">
+          "Details"
+        <a href="/books/science/the-time-machine/reviews">
+          "Reviews"
+      <Text>
+        "Details of The Time Machine"
+--- /books/science/war-of-the-worlds  (fetches: book war-of-the-worlds)
+<Page title="Bookshop">
+  <Section title="Shelf: science">
+    <Rows>
+      <a href="/books/science/the-time-machine">
+        "The Time Machine"
+      <a className="active" href="/books/science/war-of-the-worlds" data-status="active" aria-current="page">
+        "The War of the Worlds"
+    <Section title="The War of the Worlds">
+      <Tabs>
+        <a className="active" href="/books/science/war-of-the-worlds" data-status="active" aria-current="page">
+          "Details"
+        <a href="/books/science/war-of-the-worlds/reviews">
+          "Reviews"
+      <Text>
+        "Details of The War of the Worlds"
+total 118 ms
