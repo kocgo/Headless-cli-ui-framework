@@ -1,4 +1,4 @@
-import type { AnyAction, AnyPage } from './declare.js'
+import { withDescendants, type AnyAction, type AnyPage } from './declare.js'
 import type { Db } from './engine/db.js'
 import type { ActionLog } from './engine/log.js'
 
@@ -55,14 +55,17 @@ const NAME = /^[a-z][a-z0-9-]*$/
 export function defineApp<Ctx>(def: AppDef<Ctx>): App<Ctx> {
   const problems: string[] = []
   const pages = new Map<string, AnyPage>()
-  for (const p of def.pages) {
+  // Children and tabs register on their parent; list the top-level pages and they come along.
+  const all = [...new Set(def.pages.flatMap(withDescendants))]
+  for (const p of all) if (p.parent && !all.includes(p.parent)) problems.push(`page "${p.name}" has a parent that is not in the app`)
+  for (const p of all) {
     if (p.kind !== 'page') problems.push(`"${p.name}" is a layout; pass it as shell`)
     if (!NAME.test(p.name)) problems.push(`page name "${p.name}" must be lowercase letters, digits and dashes`)
     if (RESERVED.has(p.name)) problems.push(`page name "${p.name}" is a framework command`)
     if (pages.has(p.name)) problems.push(`two pages are named "${p.name}"`)
     pages.set(p.name, p)
   }
-  for (const p of [...def.pages, ...(def.shell ? [def.shell] : [])]) {
+  for (const p of [...all, ...(def.shell ? [def.shell] : [])]) {
     for (const i of Object.keys(p.def.intents ?? {})) {
       if (RESERVED.has(i)) problems.push(`intent "${p.name}.${i}" reuses the framework command "${i}"`)
       if (pages.has(i)) problems.push(`intent "${p.name}.${i}" has the same name as a page`)
@@ -81,5 +84,5 @@ export function defineApp<Ctx>(def: AppDef<Ctx>): App<Ctx> {
       actions.set(a.name, a)
     }
   if (problems.length) throw new Error(`Invalid app "${def.name}":\n  - ${problems.join('\n  - ')}`)
-  return { ...def, page: (n) => pages.get(n), action: (n) => actions.get(n), allActions: [...actions.values()] }
+  return { ...def, pages: all, page: (n) => pages.get(n), action: (n) => actions.get(n), allActions: [...actions.values()] }
 }

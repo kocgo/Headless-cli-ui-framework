@@ -85,6 +85,12 @@ export function render(node: ViewNode, width = 80): string[] {
       const value = String(p.value ?? '') || style.dim(String(p.placeholder ?? ''))
       return [`${p.label ?? p.param}: ${value}▏ ${style.dim(`(${hint})`)}`]
     }
+    case 'Tabs': {
+      // A tab bar, then the active tab's view (the outlet it wraps).
+      const tabs = p.tabs as Array<{ key: string; label: string; active: boolean }>
+      const bar = tabs.map((t, i) => (t.active ? style.bold(`[${i + 1} ${t.label}]`) : style.dim(` ${i + 1} ${t.label} `))).join(' ')
+      return [bar, style.dim('─'.repeat(Math.min(width, 48))), ...blocks(node.children, width, 0)]
+    }
     case 'Table': {
       const cols = p.columns as Array<{ label: string; align: 'left' | 'right' }>
       const rows = p.rows as Array<{ cells: string[]; command?: string[]; disabled?: boolean }>

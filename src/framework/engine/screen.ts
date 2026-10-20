@@ -4,10 +4,10 @@
  * to a concrete CLI command, and the intents available right now.
  */
 import type { QueryClient } from '@tanstack/query-core'
-import type { AnyPage, IntentDef, PageState } from '../declare.js'
+import { tabKey, type AnyPage, type IntentDef, type PageState } from '../declare.js'
 import { defaultOf, keysOf, schemaJson } from '../schema.js'
 import type { ViewElement, ViewNode } from '../view.js'
-import { walk } from '../view.js'
+import { el, walk } from '../view.js'
 import { queryKeyOf } from './compile.js'
 import type { HeadlessRouter } from './router.js'
 
@@ -24,7 +24,7 @@ export interface IntentInfo {
 }
 
 export interface BoundControl {
-  kind: 'link' | 'button' | 'input' | 'row'
+  kind: 'link' | 'button' | 'input' | 'row' | 'tab'
   label: string
   /** The exact CLI argv that performs it (without the binary). */
   command?: string[]
@@ -47,11 +47,13 @@ export interface Screen {
   view: ViewNode
   intents: IntentInfo[]
   controls: BoundControl[]
+  /** Internal: every matched page's state, for running an ancestor's intent. */
+  states: Record<string, PageState<Record<string, unknown>, unknown, unknown, unknown>>
 }
 
 interface Resolved {
   page: AnyPage
-  state: PageState<Record<string, unknown>, unknown, unknown>
+  state: PageState<Record<string, unknown>, unknown, unknown, unknown>
 }
 
 export function intentUsage(name: string, intent: IntentDef<unknown, unknown, unknown>) {
@@ -111,6 +113,12 @@ function bind(node: ViewNode, r: Resolved, intents: IntentInfo[]) {
         p.submit = { argv: ['set'], template: `${param}={value}` }
         p.value ??= r.state.params[param] === undefined ? '' : String(r.state.params[param])
       }
+    } else if (el.type === 'Tabs') {
+      const tabsIntent = find('tab')
+      for (const t of p.tabs as Array<{ key: string; command?: string[]; disabled?: boolean }>) {
+        t.command = ['tab', t.key]
+        if (!tabsIntent.available) t.disabled = true
+      }
     } else if (el.type === 'Table') {
       const rows = p.rows as Array<{ cells: string[]; link?: string; command?: string[]; disabled?: boolean }>
       const intent = p.rowIntent ? find(p.rowIntent as string) : undefined
@@ -133,6 +141,9 @@ function collectControls(node: ViewNode): BoundControl[] {
       out.push({ kind: 'button', label: p.label as string, command: p.command as string[], disabled: p.disabled as boolean | undefined, reason: p.reason as string | undefined })
     else if (el.type === 'Link') out.push({ kind: 'link', label: text, command: p.command as string[] })
     else if (el.type === 'Input') out.push({ kind: 'input', label: (p.label as string) ?? (p.param as string), submit: p.submit as BoundControl['submit'] })
+    else if (el.type === 'Tabs')
+      for (const t of p.tabs as Array<{ label: string; command: string[]; active: boolean }>)
+        out.push({ kind: 'tab', label: t.label + (t.active ? ' (active)' : ''), command: t.command })
     else if (el.type === 'Table')
       for (const row of p.rows as Array<{ cells: string[]; command?: string[]; disabled?: boolean }>)
         if (row.command) out.push({ kind: 'row', label: row.cells.join(' · '), command: row.command, disabled: row.disabled })
@@ -142,7 +153,7 @@ function collectControls(node: ViewNode): BoundControl[] {
 
 export function resolveScreen(router: HeadlessRouter['router'], queryClient: QueryClient, ctx: unknown): Screen {
   const s = router.state
-  const base = { href: s.location.href, params: {}, data: null, model: null, view: '', intents: [], controls: [] }
+  const base = { href: s.location.href, params: {}, data: null, model: null, view: '', intents: [], controls: [], states: {} }
   if (s.status === 'pending' || s.isLoading) return { ...base, page: null, title: 'Loading…', status: 'pending' }
 
   const resolved: Resolved[] = []
@@ -157,9 +168,11 @@ export function resolveScreen(router: HeadlessRouter['router'], queryClient: Que
     const params = (page.kind === 'layout' ? {} : (m.loaderData as Record<string, unknown>)) ?? {}
     const data = page.def.data ? (queryClient.getQueryData(queryKeyOf(page, params)) ?? null) : null
     if (page.def.data && data === null) return { ...base, page: page.name, title: 'Not found', status: 'not_found' }
+    // A child sees its parent's state; top-level pages and the layout see null.
+    const parent = page.parent ? (resolved.findLast((r) => r.page === page.parent)?.state ?? null) : null
     try {
-      const model = page.def.model?.({ params, data }, ctx)
-      resolved.push({ page, state: { params, data, model } })
+      const model = page.def.model?.({ params, data, parent }, ctx)
+      resolved.push({ page, state: { params, data, model, parent } })
     } catch (e) {
       return { ...base, page: page.name, title: 'Error', status: 'error', error: `model: ${(e as Error).message}` }
     }
@@ -167,18 +180,24 @@ export function resolveScreen(router: HeadlessRouter['router'], queryClient: Que
   const leaf = resolved.findLast((r) => r.page.kind === 'page')
   if (!leaf) return { ...base, page: null, title: 'Not found', status: 'not_found' }
 
-  // Intents: the page's own first, then the layout's (available everywhere).
+  // Intents: the page's own first, then its ancestors', then the layout's (available everywhere).
   const intents = [...resolved].reverse().flatMap(intentInfos)
 
-  // Views compose leaf-first: each layout receives the page's view as `outlet`.
+  // Views compose leaf-first: each parent receives its child's view as `outlet`,
+  // and, if it has tabs, a tab bar wrapping that outlet as `tabs`.
   let view: ViewNode = ''
   try {
-    for (const r of [...resolved].reverse()) {
-      if (!r.page.def.view) continue
-      const node = r.page.def.view({ ...(r.state as PageState<never, never, never>), outlet: view })
+    const order = [...resolved].reverse()
+    order.forEach((r, i) => {
+      const below = order[i - 1]?.page // the child rendered in this page's outlet
+      const tabs: ViewNode = r.page.tabs.length
+        ? el('Tabs', { tabs: r.page.tabs.map((t: AnyPage) => ({ key: tabKey(t), label: t.label, active: t === below })) }, view)
+        : ''
+      if (!r.page.def.view) return
+      const node = r.page.def.view({ ...(r.state as PageState<never, never, never, never>), outlet: view, tabs })
       bind(node, r, intents)
       view = node
-    }
+    })
   } catch (e) {
     return { ...base, page: leaf.page.name, title: 'Error', status: 'error', error: `view: ${(e as Error).message}` }
   }
@@ -203,5 +222,6 @@ export function resolveScreen(router: HeadlessRouter['router'], queryClient: Que
     view,
     intents,
     controls: collectControls(view),
+    states: Object.fromEntries(resolved.map((r) => [r.page.name, r.state])),
   }
 }

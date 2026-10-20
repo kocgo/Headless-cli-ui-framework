@@ -108,7 +108,10 @@ export async function createSession(opts: SessionOptions) {
   /** `search --query 1984` → validate params, build the link, navigate. */
   async function goPage(page: AnyPage, positional: string[], flags: Record<string, string>) {
     const keys = (page.def.positional as string[] | undefined) ?? []
-    const params = parseInput(page.params, argsToObject(keys, positional, flags), 'params')
+    const raw = argsToObject(keys, positional, flags)
+    const unknown = Object.keys(raw).filter((k) => !(k in (page.params.properties ?? {})))
+    if (unknown.length) throw new AppError('usage', `${page.name} has no param ${unknown.map((k) => `--${k}`).join(', ')}`, Object.keys(page.params.properties ?? {}).map((k) => `--${k}`))
+    const params = parseInput(page.params, raw, 'params')
     await navigate(page.link(params).href)
   }
 
@@ -191,8 +194,8 @@ export async function createSession(opts: SessionOptions) {
     const page = app.shell?.name === info.page ? app.shell : app.page(info.page)!
     const intent = page.def.intents![name]!
     const args = parseInput(intent.args ?? EmptyObject, argsToObject(keysOf(intent.args), positional, flags), `arguments for ${name}`) as Record<string, unknown>
-    const state: Record<string, unknown> =
-      page.kind === 'layout' ? { params: {}, data: null, model: null } : { params: s.params, data: s.data, model: s.model }
+    // The intent runs against the state of the page that declares it (the leaf, an ancestor, or the layout).
+    const state: Record<string, unknown> = { ...(s.states[page.name] ?? { params: {}, data: null, model: null, parent: null }) }
     if (intent.to) {
       const link = intent.to({ ...state, args, link: page.link } as never)
       await navigate(link.href, 'PUSH', name)

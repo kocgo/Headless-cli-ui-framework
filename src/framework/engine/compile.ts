@@ -4,7 +4,7 @@
  *   data    → loader, through the TanStack Query cache under [page, params]
  *   the page itself → staticData, for screen resolution
  */
-import { BaseRootRoute, BaseRoute, notFound, stripSearchParams } from '@tanstack/router-core'
+import { BaseRootRoute, BaseRoute, notFound, stripSearchParams, type AnyRoute } from '@tanstack/router-core'
 import type { QueryClient } from '@tanstack/query-core'
 import { Type, type TObject } from '@sinclair/typebox'
 import { Value } from '@sinclair/typebox/value'
@@ -36,6 +36,10 @@ export function ensurePageData(rc: RouterContext, page: AnyPage, params: Record<
 export const searchSchemaOf = (page: AnyPage): TObject =>
   page.pathKeys.length ? (Type.Omit(page.params, page.pathKeys) as unknown as TObject) : page.params
 
+/** Keep only the keys a page declares: a parent's data is cached once for all its children. */
+export const pickParams = (page: AnyPage, all: Record<string, unknown>) =>
+  Object.fromEntries(Object.keys(page.params.properties ?? {}).filter((k) => all[k] !== undefined).map((k) => [k, all[k]]))
+
 export function compileRouteTree(app: App) {
   // A factory: every router (an actor's cursor, a `peek`) gets fresh route instances.
   return () => {
@@ -46,23 +50,27 @@ export function compileRouteTree(app: App) {
       },
       staticData: { page: shell },
     })
-    const routes = app.pages.map(
-      (page) =>
-        new BaseRoute({
-          getParentRoute: () => root,
-          path: page.path,
-          validateSearch: (raw: Record<string, unknown>) => parseSearch(searchSchemaOf(page), raw),
-          // Keep URLs short: values equal to their schema default are implied, not written.
-          search: { middlewares: [stripSearchParams(Value.Default(searchSchemaOf(page), {}) as Record<string, unknown>)] },
-          loaderDeps: ({ search }) => search as Record<string, unknown>,
-          loader: async ({ context, params, deps }) => {
-            const full = parseInput(page.params, { ...deps, ...(params as object) }, 'params') as Record<string, unknown>
-            if (page.def.data && (await ensurePageData(context as RouterContext, page, full)) === null) throw notFound()
-            return full
-          },
-          staticData: { page },
-        }),
-    )
-    return root.addChildren(routes)
+
+    // Each page becomes a route under its parent's route; a child's path is relative.
+    const build = (page: AnyPage, parentRoute: AnyRoute): AnyRoute => {
+      const ownSearch = page.ownParams.properties ? (Type.Omit(page.ownParams, page.pathKeys) as unknown as TObject) : page.ownParams
+      const route = new BaseRoute({
+        getParentRoute: () => parentRoute,
+        path: page.relPath,
+        validateSearch: (raw: Record<string, unknown>) => parseSearch(ownSearch, raw),
+        // Keep URLs short: values equal to their schema default are implied, not written.
+        search: { middlewares: [stripSearchParams(Value.Default(ownSearch, {}) as Record<string, unknown>)] },
+        loaderDeps: ({ search }) => search as Record<string, unknown>,
+        loader: async ({ context, params, deps }) => {
+          const all = parseInput(page.params, { ...deps, ...(params as object) }, 'params') as Record<string, unknown>
+          const mine = pickParams(page, all)
+          if (page.def.data && (await ensurePageData(context as RouterContext, page, mine)) === null) throw notFound()
+          return mine
+        },
+        staticData: { page },
+      })
+      return page.children.length ? route.addChildren(page.children.map((c) => build(c, route))) : route
+    }
+    return root.addChildren(app.pages.filter((p) => !p.parent).map((p) => build(p, root)))
   }
 }
